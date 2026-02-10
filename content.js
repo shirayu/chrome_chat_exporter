@@ -28,13 +28,34 @@
 	function getModelText(container) {
 		const markdownNode = container.querySelector(SELECTORS.modelMarkdown);
 		if (markdownNode) {
-			return cleanText(
-				markdownNode.innerText || markdownNode.textContent || "",
-			);
+			return cleanText(extractMarkdownWithMath(markdownNode));
 		}
 		const fallback = container.querySelector(SELECTORS.modelFallback);
 		if (!fallback) return "";
 		return cleanText(fallback.innerText || fallback.textContent || "");
+	}
+
+	function extractMarkdownWithMath(node) {
+		const clone = node.cloneNode(true);
+		const blockMathNodes = Array.from(
+			clone.querySelectorAll(".math-block[data-math]"),
+		);
+		blockMathNodes.forEach((el) => {
+			const tex = el.getAttribute("data-math") || "";
+			const text = tex ? `$$\n${tex}\n$$` : "";
+			el.replaceWith(document.createTextNode(text));
+		});
+
+		const inlineMathNodes = Array.from(
+			clone.querySelectorAll(".math-inline[data-math]"),
+		);
+		inlineMathNodes.forEach((el) => {
+			const tex = el.getAttribute("data-math") || "";
+			const text = tex ? `$${tex}$` : "";
+			el.replaceWith(document.createTextNode(text));
+		});
+
+		return clone.innerText || clone.textContent || "";
 	}
 
 	function getModelHtml(container) {
