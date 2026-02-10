@@ -53,6 +53,9 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
       }
+      .option-group.scope-group {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
       .option {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr);
@@ -99,6 +102,18 @@
       .option .hint {
         display: none;
       }
+      .select-row {
+        margin-top: 8px;
+      }
+      select {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        padding: 8px 10px;
+        font-size: 12px;
+        background: #fff;
+        color: #0f172a;
+      }
       button {
         width: 100%;
         border: 0;
@@ -136,11 +151,11 @@
     </div>
     <div class="groups">
       <div class="section scope">
-        <div class="option-group">
+        <div class="option-group scope-group">
           <label class="option">
-          <input type="radio" name="scope" value="current" checked />
-          <span class="stack">
-            <span class="icon" aria-hidden="true">
+            <input type="radio" name="scope" value="current" checked />
+            <span class="stack">
+              <span class="icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 6h10"></path>
                 <path d="M4 12h16"></path>
@@ -154,20 +169,38 @@
         </label>
         <label class="option">
           <input type="radio" name="scope" value="all" />
-          <span class="stack">
-            <span class="icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M7 7h10"></path>
-                <path d="M7 12h10"></path>
-                <path d="M7 17h10"></path>
-                <rect x="3" y="4" width="18" height="16" rx="2"></rect>
-              </svg>
+            <span class="stack">
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M7 7h10"></path>
+                  <path d="M7 12h10"></path>
+                  <path d="M7 17h10"></path>
+                  <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                </svg>
+              </span>
+              <span class="text">
+                <span class="label" data-i18n="scopeAll">全会話</span>
+              </span>
             </span>
-            <span class="text">
-            <span class="label" data-i18n="scopeAll">全会話</span>
+          </label>
+          <label class="option">
+            <input type="radio" name="scope" value="select" />
+            <span class="stack">
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 6h16"></path>
+                  <path d="M4 12h10"></path>
+                  <path d="M4 18h14"></path>
+                </svg>
+              </span>
+              <span class="text">
+                <span class="label" data-i18n="scopeSelect">会話を指定</span>
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+        </div>
+        <div class="select-row" id="turn-select-row" hidden>
+          <select id="turn-select"></select>
         </div>
       </div>
       <div class="section output">

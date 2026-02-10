@@ -35,6 +35,9 @@
 	"scopeAll": {
 		"message": "All"
 	},
+	"scopeSelect": {
+		"message": "Select"
+	},
 	"outputClipboard": {
 		"message": "Clipboard"
 	},
@@ -49,5 +52,8 @@
 	},
 	"exportButton": {
 		"message": "Export"
+	},
+	"turnListEmpty": {
+		"message": "No conversations found"
 	}
 }

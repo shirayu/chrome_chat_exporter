@@ -1,5 +1,7 @@
 const statusEl = document.getElementById("status");
 const exportBtn = document.getElementById("export");
+const turnSelectRow = document.getElementById("turn-select-row");
+const turnSelect = document.getElementById("turn-select");
 
 function applyI18n() {
 	document.querySelectorAll("[data-i18n]").forEach((el) => {
@@ -15,6 +17,11 @@ function applyI18n() {
 function getScope() {
 	const selected = document.querySelector("input[name=scope]:checked");
 	return selected ? selected.value : "current";
+}
+
+function getSelectedTurnIndex() {
+	const value = turnSelect.value;
+	return value ? Number.parseInt(value, 10) : null;
 }
 
 function getOutput() {
@@ -62,6 +69,7 @@ async function requestExport(format) {
 		const request = {
 			type: "EXPORT_GEMINI_CHAT",
 			scope: getScope(),
+			turnIndex: getSelectedTurnIndex(),
 		};
 		console.debug("[Gemini Export] sendMessage payload", request);
 
@@ -98,7 +106,9 @@ async function requestExport(format) {
 			return;
 		}
 
-		const scopeLabel = getScope() === "current" ? "current" : "all";
+		const scope = getScope();
+		const scopeLabel =
+			scope === "current" ? "current" : scope === "select" ? "select" : "all";
 		const filename = `gemini_${scopeLabel}_${Date.now()}.${extension}`;
 
 		await chrome.downloads.download({ url, filename, saveAs: true });
@@ -108,6 +118,43 @@ async function requestExport(format) {
 		setStatus(chrome.i18n.getMessage("statusExportFailed"), true);
 	}
 }
+
+async function loadTurnOptions(tabId) {
+	try {
+		const injected = await ensureContentScript(tabId);
+		if (!injected) return;
+		const response = await chrome.tabs.sendMessage(tabId, {
+			type: "LIST_GEMINI_TURNS",
+		});
+		if (!response || !response.ok) return;
+		const turns = response.data.turns || [];
+		turnSelect.innerHTML = "";
+		if (turns.length === 0) {
+			const option = document.createElement("option");
+			option.value = "";
+			option.textContent = chrome.i18n.getMessage("turnListEmpty");
+			turnSelect.appendChild(option);
+			return;
+		}
+		turns.forEach((turn) => {
+			const option = document.createElement("option");
+			option.value = String(turn.index);
+			option.textContent = turn.label;
+			turnSelect.appendChild(option);
+		});
+	} catch (error) {
+		console.error("[Gemini Export] failed to load turn list", error);
+	}
+}
+
+function toggleTurnSelect() {
+	const scope = getScope();
+	turnSelectRow.hidden = scope !== "select";
+}
+
+document.querySelectorAll("input[name=scope]").forEach((radio) => {
+	radio.addEventListener("change", toggleTurnSelect);
+});
 
 exportBtn.addEventListener("click", () => requestExport(getFormat()));
 
@@ -119,7 +166,9 @@ getActiveTab().then((tab) => {
 		tab.url.startsWith("https://gemini.google.com/")
 	) {
 		setStatus(chrome.i18n.getMessage("statusReady"), false);
+		loadTurnOptions(tab.id);
 	} else {
 		setStatus(chrome.i18n.getMessage("statusOpenGemini"), true);
 	}
+	toggleTurnSelect();
 });

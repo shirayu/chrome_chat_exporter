@@ -35,6 +35,9 @@
 	"scopeAll": {
 		"message": "全会話"
 	},
+	"scopeSelect": {
+		"message": "会話を指定"
+	},
 	"outputClipboard": {
 		"message": "クリップボード"
 	},
@@ -49,5 +52,8 @@
 	},
 	"exportButton": {
 		"message": "エクスポート"
+	},
+	"turnListEmpty": {
+		"message": "会話が見つかりません"
 	}
 }

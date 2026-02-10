@@ -52,10 +52,14 @@
 			.replace(/>/g, "&gt;");
 	}
 
-	function pickConversations(scope) {
+	function pickConversations(scope, turnIndex) {
 		const nodes = Array.from(document.querySelectorAll(SELECTORS.conversation));
 		if (nodes.length === 0) return [];
 		if (scope === "current") return [nodes[nodes.length - 1]];
+		if (scope === "select" && Number.isInteger(turnIndex)) {
+			const picked = nodes[turnIndex];
+			return picked ? [picked] : [];
+		}
 		return nodes;
 	}
 
@@ -125,8 +129,8 @@
 		return lines.join("\n");
 	}
 
-	function extract(scope) {
-		const containers = pickConversations(scope);
+	function extract(scope, turnIndex) {
+		const containers = pickConversations(scope, turnIndex);
 		const turns = containers.map((container) => ({
 			user: getUserText(container),
 			model: getModelText(container),
@@ -136,7 +140,9 @@
 		const title =
 			scope === "current"
 				? "Gemini Conversation (Current)"
-				: "Gemini Conversations (All)";
+				: scope === "select"
+					? "Gemini Conversation (Selected)"
+					: "Gemini Conversations (All)";
 		return {
 			title,
 			turns,
@@ -145,12 +151,38 @@
 		};
 	}
 
+	function buildTurnList() {
+		const nodes = Array.from(document.querySelectorAll(SELECTORS.conversation));
+		return nodes.map((container, index) => {
+			const user = getUserText(container);
+			const hint = user ? user.slice(0, 20) : "(no text)";
+			return {
+				index,
+				label: `${index + 1}. ${hint}`,
+			};
+		});
+	}
+
 	chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-		if (!message || message.type !== "EXPORT_GEMINI_CHAT") return;
+		if (!message || !message.type) return;
 		try {
-			const scope = message.scope === "current" ? "current" : "all";
-			const result = extract(scope);
-			sendResponse({ ok: true, data: result });
+			if (message.type === "EXPORT_GEMINI_CHAT") {
+				const scope =
+					message.scope === "current" || message.scope === "select"
+						? message.scope
+						: "all";
+				const turnIndex = Number.isInteger(message.turnIndex)
+					? message.turnIndex
+					: null;
+				const result = extract(scope, turnIndex);
+				sendResponse({ ok: true, data: result });
+				return true;
+			}
+			if (message.type === "LIST_GEMINI_TURNS") {
+				const turns = buildTurnList();
+				sendResponse({ ok: true, data: { turns } });
+				return true;
+			}
 		} catch (error) {
 			sendResponse({ ok: false, error: String(error) });
 		}
