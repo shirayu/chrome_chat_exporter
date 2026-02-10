@@ -83,6 +83,18 @@
         color: #0ea5e9;
         flex: 0 0 auto;
       }
+      .section.scope .icon {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .section.output .icon {
+        background: #f3e8ff;
+        color: #7e22ce;
+      }
+      .section.format .icon {
+        background: #fef3c7;
+        color: #b45309;
+      }
       .icon svg {
         width: 16px;
         height: 16px;
@@ -153,22 +165,22 @@
       <div class="section scope">
         <div class="option-group scope-group">
           <label class="option">
-            <input type="radio" name="scope" value="current" checked />
+            <input type="radio" name="scope" value="all" checked />
             <span class="stack">
               <span class="icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 6h10"></path>
-                <path d="M4 12h16"></path>
-                <path d="M4 18h8"></path>
-              </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 6h10"></path>
+                  <path d="M4 12h16"></path>
+                  <path d="M4 18h8"></path>
+                </svg>
+              </span>
+              <span class="text">
+                <span class="label" data-i18n="scopeAll">全会話</span>
+              </span>
             </span>
-            <span class="text">
-            <span class="label" data-i18n="scopeCurrent">最新会話</span>
-            </span>
-          </span>
-        </label>
-        <label class="option">
-          <input type="radio" name="scope" value="all" />
+          </label>
+          <label class="option">
+            <input type="radio" name="scope" value="current" />
             <span class="stack">
               <span class="icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -179,7 +191,7 @@
                 </svg>
               </span>
               <span class="text">
-                <span class="label" data-i18n="scopeAll">全会話</span>
+                <span class="label" data-i18n="scopeCurrent">最新会話</span>
               </span>
             </span>
           </label>

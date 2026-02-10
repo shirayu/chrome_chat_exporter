@@ -1,6 +1,6 @@
 {
 	"extName": {
-		"message": "Gemini Chat Exporter"
+		"message": "Chat Exporter"
 	},
 	"extDescription": {
 		"message": "Gemini の会話を HTML / Markdown でエクスポートします。"

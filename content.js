@@ -63,8 +63,7 @@
 		return nodes;
 	}
 
-	function buildHtml(turns, title) {
-		const safeTitle = escapeHtml(title);
+	function buildHtml(turns) {
 		const body = turns
 			.map((turn, index) => {
 				const userHtml = escapeHtml(turn.user).replace(/\n/g, "<br>");
@@ -91,7 +90,7 @@
 			'<html lang="ja">',
 			"<head>",
 			'<meta charset="utf-8">',
-			`<title>${safeTitle}</title>`,
+			"<title>Gemini Export</title>",
 			"<style>",
 			"body{font-family:system-ui, -apple-system, sans-serif;line-height:1.6;margin:24px;background:#f8f9fb;color:#111;}",
 			".turn{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:16px;}",
@@ -103,15 +102,14 @@
 			"</style>",
 			"</head>",
 			"<body>",
-			`<h1>${safeTitle}</h1>`,
 			body,
 			"</body>",
 			"</html>",
 		].join("\n");
 	}
 
-	function buildMarkdown(turns, title) {
-		const lines = [`# ${title}`];
+	function buildMarkdown(turns) {
+		const lines = [];
 		turns.forEach((turn, index) => {
 			lines.push(
 				"",
@@ -137,17 +135,10 @@
 			modelHtml: getModelHtml(container),
 		}));
 
-		const title =
-			scope === "current"
-				? "Gemini Conversation (Current)"
-				: scope === "select"
-					? "Gemini Conversation (Selected)"
-					: "Gemini Conversations (All)";
 		return {
-			title,
 			turns,
-			html: buildHtml(turns, title),
-			markdown: buildMarkdown(turns, title),
+			html: buildHtml(turns),
+			markdown: buildMarkdown(turns),
 		};
 	}
 
