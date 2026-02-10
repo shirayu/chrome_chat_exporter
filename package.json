@@ -6,8 +6,12 @@
 	"name": "pyright-exec",
 	"scripts": {
 		"preinstall": "npx only-allow pnpm",
-		"format": "biome format --write",
-		"lint": "biome check",
+		"format": "run-p format:biome format:markdownlint",
+		"format:biome": "biome format --write",
+		"format:markdownlint": "markdownlint -f ./*.md doc/*.md",
+		"lint": "run-p lint:biome lint:md",
+		"lint:biome": "biome check",
+		"lint:md": "markdownlint *.md */*.md",
 		"test:biome": "biome check",
 		"test:md": "markdownlint *.md",
 		"test": "run-s test:biome test:md"
