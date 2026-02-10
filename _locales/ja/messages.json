@@ -1,0 +1,53 @@
+{
+	"extName": {
+		"message": "Gemini Chat Exporter"
+	},
+	"extDescription": {
+		"message": "Gemini の会話を HTML / Markdown でエクスポートします。"
+	},
+	"statusOpenGemini": {
+		"message": "Gemini のページで開いてください。"
+	},
+	"statusReady": {
+		"message": "エクスポート形式を選んでください。"
+	},
+	"statusNoTab": {
+		"message": "Gemini のタブが見つかりません。"
+	},
+	"statusInjectFailed": {
+		"message": "コンテンツスクリプトの注入に失敗しました。"
+	},
+	"statusPageNotReady": {
+		"message": "ページの読み込みが完了していないか、対応外のページです。"
+	},
+	"statusCopied": {
+		"message": "クリップボードにコピーしました。"
+	},
+	"statusDownloadStarted": {
+		"message": "エクスポートを開始しました。"
+	},
+	"statusExportFailed": {
+		"message": "エクスポートに失敗しました。"
+	},
+	"scopeCurrent": {
+		"message": "最新会話"
+	},
+	"scopeAll": {
+		"message": "全会話"
+	},
+	"outputClipboard": {
+		"message": "クリップボード"
+	},
+	"outputDownload": {
+		"message": "ダウンロード"
+	},
+	"formatMarkdown": {
+		"message": "Markdown"
+	},
+	"formatHtml": {
+		"message": "HTML"
+	},
+	"exportButton": {
+		"message": "エクスポート"
+	}
+}

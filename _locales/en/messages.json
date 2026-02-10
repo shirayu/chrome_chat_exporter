@@ -1,0 +1,53 @@
+{
+	"extName": {
+		"message": "Gemini Chat Exporter"
+	},
+	"extDescription": {
+		"message": "Export Gemini conversations as HTML or Markdown."
+	},
+	"statusOpenGemini": {
+		"message": "Open this on a Gemini page."
+	},
+	"statusReady": {
+		"message": "Choose export options."
+	},
+	"statusNoTab": {
+		"message": "Gemini tab not found."
+	},
+	"statusInjectFailed": {
+		"message": "Failed to inject content script."
+	},
+	"statusPageNotReady": {
+		"message": "Page not ready or unsupported."
+	},
+	"statusCopied": {
+		"message": "Copied to clipboard."
+	},
+	"statusDownloadStarted": {
+		"message": "Download started."
+	},
+	"statusExportFailed": {
+		"message": "Export failed."
+	},
+	"scopeCurrent": {
+		"message": "Latest"
+	},
+	"scopeAll": {
+		"message": "All"
+	},
+	"outputClipboard": {
+		"message": "Clipboard"
+	},
+	"outputDownload": {
+		"message": "Download"
+	},
+	"formatMarkdown": {
+		"message": "Markdown"
+	},
+	"formatHtml": {
+		"message": "HTML"
+	},
+	"exportButton": {
+		"message": "Export"
+	}
+}

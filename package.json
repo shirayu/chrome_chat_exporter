@@ -1,0 +1,25 @@
+{
+	"author": "",
+	"description": "",
+	"license": "",
+	"main": "",
+	"name": "pyright-exec",
+	"scripts": {
+		"preinstall": "npx only-allow pnpm",
+		"format": "biome format --write",
+		"lint": "biome check",
+		"test:biome": "biome check",
+		"test:md": "markdownlint *.md",
+		"test": "run-s test:biome test:md"
+	},
+	"version": "1.0.0",
+	"devDependencies": {
+		"@biomejs/biome": "2.0.0",
+		"markdownlint-cli": "^0.43.0",
+		"npm-run-all2": "^7.0.2"
+	},
+	"engines": {
+		"npm": "Use pnpm instead of npm!"
+	},
+	"packageManager": "pnpm@10.5.2"
+}
