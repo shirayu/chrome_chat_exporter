@@ -11,6 +11,8 @@
 		modelFallback: ".response-content",
 	};
 
+	const markdown = window.__geminiMarkdown || {};
+
 	function cleanText(text) {
 		return text
 			.replace(/\u00A0/g, " ")
@@ -28,34 +30,16 @@
 	function getModelText(container) {
 		const markdownNode = container.querySelector(SELECTORS.modelMarkdown);
 		if (markdownNode) {
-			return cleanText(extractMarkdownWithMath(markdownNode));
+			return cleanText(markdown.extractMarkdownFromNode(markdownNode));
 		}
 		const fallback = container.querySelector(SELECTORS.modelFallback);
 		if (!fallback) return "";
 		return cleanText(fallback.innerText || fallback.textContent || "");
 	}
 
-	function extractMarkdownWithMath(node) {
-		const clone = node.cloneNode(true);
-		const blockMathNodes = Array.from(
-			clone.querySelectorAll(".math-block[data-math]"),
-		);
-		blockMathNodes.forEach((el) => {
-			const tex = el.getAttribute("data-math") || "";
-			const text = tex ? `$$\n${tex}\n$$` : "";
-			el.replaceWith(document.createTextNode(text));
-		});
-
-		const inlineMathNodes = Array.from(
-			clone.querySelectorAll(".math-inline[data-math]"),
-		);
-		inlineMathNodes.forEach((el) => {
-			const tex = el.getAttribute("data-math") || "";
-			const text = tex ? `$${tex}$` : "";
-			el.replaceWith(document.createTextNode(text));
-		});
-
-		return clone.innerText || clone.textContent || "";
+	if (!markdown.extractMarkdownFromNode) {
+		markdown.extractMarkdownFromNode = (node) =>
+			node.innerText || node.textContent || "";
 	}
 
 	function getModelHtml(container) {
