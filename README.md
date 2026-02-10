@@ -1,16 +1,27 @@
-# Gemini Chat Exporter
+# Chat Exporter
 
-Gemini の会話を HTML / Markdown でエクスポートする Chrome 拡張です。
+Chrome extension that exports Gemini conversations as HTML or Markdown.
 
-## 使い方
-1. Chrome の拡張機能ページで「パッケージ化されていない拡張機能を読み込む」を選び、このフォルダを指定します。
-2. `https://gemini.google.com/` の会話画面を開きます。
-3. 拡張機能アイコンを押し、`1会話（最新）` または `全会話` を選んで `HTML` / `Markdown` をクリックします。
+## Usage
 
-## 仕様
-- `1会話（最新）` は画面内の最新ターンを対象にします。
-- `全会話` は表示中の全ターンを対象にします。
+1. Open Chrome Extensions and choose "Load unpacked", then select this folder.
+2. Open `https://gemini.google.com/` and a chat thread.
+3. Click the extension icon, choose the scope and output, then click Export.
 
-## 注意
-- 画像やファイル添付の内容はテキストに含まれません。
-- DOM 構造が変更されると抽出できなくなる可能性があります。
+## Options
+
+- Scope:
+    - Latest: export only the latest turn.
+    - All: export all visible turns.
+    - Select: choose a specific turn from a dropdown (label shows the first 20 characters).
+- Output:
+    - Clipboard (default)
+    - Download
+- Format:
+    - Markdown (default)
+    - HTML
+
+## Notes
+
+- Images and file attachments are not included.
+- If Gemini changes its DOM structure, extraction may break.
