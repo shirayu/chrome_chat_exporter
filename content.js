@@ -29,21 +29,25 @@
 	}
 
 	function getModelThoughts(container) {
-		const thoughtsContainer = container.querySelector(
-			SELECTORS.thoughtsContainer,
+		const thoughtsContainers = Array.from(
+			container.querySelectorAll(SELECTORS.thoughtsContainer),
 		);
-		if (!thoughtsContainer) return "";
+		if (thoughtsContainers.length === 0) return "";
 
-		const markdownNodes = Array.from(
-			thoughtsContainer.querySelectorAll(".markdown"),
-		);
-		for (const node of markdownNodes) {
-			const text = markdown.extractMarkdownFromNode(node);
-			if (text?.trim()) {
-				return cleanText(text);
+		const chunks = [];
+		for (const thoughtsContainer of thoughtsContainers) {
+			const markdownNodes = Array.from(
+				thoughtsContainer.querySelectorAll(".markdown"),
+			);
+			for (const node of markdownNodes) {
+				const text = markdown.extractMarkdownFromNode(node);
+				if (text?.trim()) {
+					chunks.push(cleanText(text));
+				}
 			}
 		}
-		return "";
+		if (chunks.length === 0) return "";
+		return cleanText(chunks.join("\n\n"));
 	}
 
 	function getModelText(container) {
@@ -51,14 +55,17 @@
 		const markdownNodes = Array.from(
 			container.querySelectorAll(SELECTORS.modelMarkdown),
 		);
-		// Skip thoughts container
-		const thoughtsContainer = container.querySelector(
-			SELECTORS.thoughtsContainer,
+		const thoughtsContainers = Array.from(
+			container.querySelectorAll(SELECTORS.thoughtsContainer),
 		);
 
 		for (const node of markdownNodes) {
 			// Skip if this node is inside thoughts container
-			if (thoughtsContainer?.contains(node)) {
+			if (
+				thoughtsContainers.some((thoughtsContainer) =>
+					thoughtsContainer.contains(node),
+				)
+			) {
 				continue;
 			}
 			const text = markdown.extractMarkdownFromNode(node);
@@ -77,21 +84,24 @@
 	}
 
 	function getModelThoughtsHtml(container) {
-		const thoughtsContainer = container.querySelector(
-			SELECTORS.thoughtsContainer,
+		const thoughtsContainers = Array.from(
+			container.querySelectorAll(SELECTORS.thoughtsContainer),
 		);
-		if (!thoughtsContainer) return "";
+		if (thoughtsContainers.length === 0) return "";
 
-		const markdownNodes = Array.from(
-			thoughtsContainer.querySelectorAll(".markdown"),
-		);
-		for (const node of markdownNodes) {
-			const html = node.innerHTML.trim();
-			if (html) {
-				return html;
+		const chunks = [];
+		for (const thoughtsContainer of thoughtsContainers) {
+			const markdownNodes = Array.from(
+				thoughtsContainer.querySelectorAll(".markdown"),
+			);
+			for (const node of markdownNodes) {
+				const html = node.innerHTML.trim();
+				if (html) {
+					chunks.push(html);
+				}
 			}
 		}
-		return "";
+		return chunks.join("\n");
 	}
 
 	function getModelHtml(container) {
@@ -99,14 +109,17 @@
 		const markdownNodes = Array.from(
 			container.querySelectorAll(SELECTORS.modelMarkdown),
 		);
-		// Skip thoughts container
-		const thoughtsContainer = container.querySelector(
-			SELECTORS.thoughtsContainer,
+		const thoughtsContainers = Array.from(
+			container.querySelectorAll(SELECTORS.thoughtsContainer),
 		);
 
 		for (const node of markdownNodes) {
 			// Skip if this node is inside thoughts container
-			if (thoughtsContainer?.contains(node)) {
+			if (
+				thoughtsContainers.some((thoughtsContainer) =>
+					thoughtsContainer.contains(node),
+				)
+			) {
 				continue;
 			}
 			const html = node.innerHTML.trim();
