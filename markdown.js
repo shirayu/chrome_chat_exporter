@@ -103,10 +103,26 @@
 				case "p": {
 					const rawText = node.textContent || "";
 					const allowMarkdown = /(\*\*|__|~~|`)/.test(rawText);
+
+					// Check if paragraph contains only bold text (likely a heading)
+					const isBoldOnly =
+						node.childNodes.length === 1 &&
+						(node.childNodes[0].tagName?.toLowerCase() === "b" ||
+							node.childNodes[0].tagName?.toLowerCase() === "strong");
+
 					const content = Array.from(node.childNodes)
 						.map((child) => renderInline(child, { ...context, allowMarkdown }))
 						.join("")
 						.trim();
+
+					// If bold-only and reasonably short, treat as h3
+					if (isBoldOnly && content.length > 0 && content.length < 200) {
+						const headingText = content.replace(/^\*\*|\*\*$/g, "");
+						appendLine(`### ${headingText}`);
+						appendLine("");
+						return "";
+					}
+
 					appendLine(content);
 					appendLine("");
 					return "";

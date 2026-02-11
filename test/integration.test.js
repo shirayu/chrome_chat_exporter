@@ -250,3 +250,133 @@ test("2.part.html order is preserved", () => {
 		lastIndex = index;
 	});
 });
+
+test("multi-markdown response skips empty markdown elements", () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-multi-markdown-minimal.html"),
+		"utf8",
+	);
+	const root = parseHtml(html);
+
+	// Find all markdown elements
+	const markdowns = [];
+	walk(root, (node) => {
+		if (
+			node.nodeType === global.Node.ELEMENT_NODE &&
+			hasClass(node, "markdown")
+		) {
+			markdowns.push(node);
+		}
+	});
+
+	assert.ok(markdowns.length >= 2, "should have multiple markdown elements");
+
+	// First markdown should be empty
+	const firstText = extractMarkdownFromNode(markdowns[0]).trim();
+	assert.equal(firstText, "", "first markdown should be empty");
+
+	// Find first non-empty markdown
+	let nonEmptyMarkdown = null;
+	for (const md of markdowns) {
+		const text = extractMarkdownFromNode(md).trim();
+		if (text) {
+			nonEmptyMarkdown = md;
+			break;
+		}
+	}
+
+	assert.ok(nonEmptyMarkdown, "should find non-empty markdown");
+
+	const markdown = extractMarkdownFromNode(nonEmptyMarkdown);
+
+	// Verify it contains expected content (using snippets that exist in the HTML)
+	const expectedSnippets = ["Analyzing", "Lecture"];
+
+	expectedSnippets.forEach((snippet) => {
+		assert.ok(markdown.includes(snippet), `should contain snippet: ${snippet}`);
+	});
+});
+
+test("bold-only paragraphs are converted to headings", () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-multi-markdown-minimal.html"),
+		"utf8",
+	);
+	const root = parseHtml(html);
+
+	// Find all markdown elements
+	const markdowns = [];
+	walk(root, (node) => {
+		if (
+			node.nodeType === global.Node.ELEMENT_NODE &&
+			hasClass(node, "markdown")
+		) {
+			markdowns.push(node);
+		}
+	});
+
+	// Find first non-empty markdown
+	let nonEmptyMarkdown = null;
+	for (const md of markdowns) {
+		const text = extractMarkdownFromNode(md).trim();
+		if (text) {
+			nonEmptyMarkdown = md;
+			break;
+		}
+	}
+
+	assert.ok(nonEmptyMarkdown, "should find non-empty markdown");
+
+	const markdown = extractMarkdownFromNode(nonEmptyMarkdown);
+
+	// Verify bold-only paragraphs are converted to ### headings
+	assert.ok(
+		markdown.includes("### Analyzing the Lecture Series"),
+		"should convert bold-only paragraph to heading",
+	);
+	assert.ok(
+		markdown.includes("### Evaluating Appendix Integration"),
+		"should convert bold-only paragraph to heading",
+	);
+});
+
+test("tables are converted to markdown tables", () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-multi-markdown-minimal.html"),
+		"utf8",
+	);
+	const root = parseHtml(html);
+
+	// Find all markdown elements
+	const markdowns = [];
+	walk(root, (node) => {
+		if (
+			node.nodeType === global.Node.ELEMENT_NODE &&
+			hasClass(node, "markdown")
+		) {
+			markdowns.push(node);
+		}
+	});
+
+	// Check if any markdown contains a table
+	let foundTable = false;
+	for (const md of markdowns) {
+		const markdown = extractMarkdownFromNode(md);
+		if (markdown.includes("|") && markdown.includes("---")) {
+			foundTable = true;
+			// Verify table structure
+			assert.ok(markdown.includes("観点"), "should contain table header");
+			assert.ok(
+				markdown.includes("第7回 (Uncertainty)"),
+				"should contain table content",
+			);
+			assert.ok(
+				markdown.includes("Appendix 2 (Purity)"),
+				"should contain table content",
+			);
+			break;
+		}
+	}
+
+	assert.ok(foundTable, "should find and convert table to markdown");
+});
