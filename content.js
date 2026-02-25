@@ -163,27 +163,27 @@
 						: "";
 
 				const parts = [
-					`<section class=\"turn\">`,
+					`<section class="turn">`,
 					`  <h2>Turn ${index + 1}</h2>`,
-					`  <div class=\"role user\">`,
+					`  <div class="role user">`,
 					`    <h3>User</h3>`,
-					`    <div class=\"content\">${userHtml}</div>`,
+					`    <div class="content">${userHtml}</div>`,
 					`  </div>`,
 				];
 
 				if (thoughtsHtml) {
 					parts.push(
-						`  <div class=\"role thoughts\">`,
+						`  <div class="role thoughts">`,
 						`    <h3>思考プロセス</h3>`,
-						`    <div class=\"content\">${thoughtsHtml}</div>`,
+						`    <div class="content">${thoughtsHtml}</div>`,
 						`  </div>`,
 					);
 				}
 
 				parts.push(
-					`  <div class=\"role model\">`,
+					`  <div class="role model">`,
 					`    <h3>Gemini</h3>`,
-					`    <div class=\"content\">${modelHtml}</div>`,
+					`    <div class="content">${modelHtml}</div>`,
 					`  </div>`,
 					`</section>`,
 				);

@@ -104,7 +104,9 @@ class TextNode {
 function walk(node, fn) {
 	fn(node);
 	if (node.nodeType !== global.Node.ELEMENT_NODE) return;
-	node.childNodes.forEach((child) => walk(child, fn));
+	node.childNodes.forEach((child) => {
+		walk(child, fn);
+	});
 }
 
 function createSelectorMatcher(selector) {

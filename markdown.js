@@ -50,12 +50,16 @@
 				return;
 			}
 			const children = Array.from(element.childNodes || []);
-			children.forEach((child) => collectActionNodes(child, collected));
+			children.forEach((child) => {
+				collectActionNodes(child, collected);
+			});
 		};
 
 		const actionNodes = [];
 		collectActionNodes(clone, actionNodes);
-		actionNodes.forEach((element) => removeNode(element));
+		actionNodes.forEach((element) => {
+			removeNode(element);
+		});
 
 		const extractTex = (element) => {
 			const direct = element.getAttribute("data-math");
@@ -235,7 +239,9 @@
 					return childText();
 				case "table": {
 					const tableLines = renderTable(node, context);
-					tableLines.forEach((line) => lines.push(line));
+					tableLines.forEach((line) => {
+						lines.push(line);
+					});
 					appendLine("");
 					return "";
 				}

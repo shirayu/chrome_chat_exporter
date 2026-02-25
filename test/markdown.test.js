@@ -37,9 +37,9 @@ function element(tag, attrs = {}, children = []) {
 		cloneNode(deep = false) {
 			const clone = element(tag, { ...attrs }, []);
 			if (!deep) return clone;
-			node.childNodes.forEach((child) =>
-				clone.appendChild(child.cloneNode(true)),
-			);
+			node.childNodes.forEach((child) => {
+				clone.appendChild(child.cloneNode(true));
+			});
 			return clone;
 		},
 	};
