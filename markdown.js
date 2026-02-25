@@ -4,6 +4,59 @@
 
 	function extractMarkdownFromNode(node) {
 		const clone = node.cloneNode(true);
+
+		const hasClass = (element, className) => {
+			if (!element || !className) return false;
+			if (element.classList?.contains) {
+				return element.classList.contains(className);
+			}
+			const classAttr = element.getAttribute?.("class");
+			if (!classAttr) return false;
+			return classAttr.split(/\s+/).includes(className);
+		};
+
+		const removeNode = (element) => {
+			if (!element) return;
+			if (typeof element.remove === "function") {
+				element.remove();
+				return;
+			}
+			const parent = element.parentNode;
+			if (!parent) return;
+			if (typeof parent.removeChild === "function") {
+				parent.removeChild(element);
+				return;
+			}
+			if (Array.isArray(parent.childNodes)) {
+				const index = parent.childNodes.indexOf(element);
+				if (index !== -1) {
+					parent.childNodes.splice(index, 1);
+				}
+			}
+		};
+
+		const isMessageActionElement = (element) => {
+			if (element.tagName?.toLowerCase() === "button") return true;
+			if (element.getAttribute?.("hide-from-message-actions") !== null) {
+				return true;
+			}
+			return hasClass(element, "table-footer");
+		};
+
+		const collectActionNodes = (element, collected) => {
+			if (!element || element.nodeType !== NODE_ELEMENT) return;
+			if (isMessageActionElement(element)) {
+				collected.push(element);
+				return;
+			}
+			const children = Array.from(element.childNodes || []);
+			children.forEach((child) => collectActionNodes(child, collected));
+		};
+
+		const actionNodes = [];
+		collectActionNodes(clone, actionNodes);
+		actionNodes.forEach((element) => removeNode(element));
+
 		const extractTex = (element) => {
 			const direct = element.getAttribute("data-math");
 			if (direct) return direct;

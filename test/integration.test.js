@@ -380,3 +380,25 @@ test("tables are converted to markdown tables", () => {
 
 	assert.ok(foundTable, "should find and convert table to markdown");
 });
+
+test("table action buttons are excluded from markdown output", () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-table-with-export-button.html"),
+		"utf8",
+	);
+	const root = parseHtml(html);
+	const markdownRoot = findByClass(root, "markdown");
+	assert.ok(markdownRoot, "markdown root not found");
+
+	const markdown = extractMarkdownFromNode(markdownRoot);
+
+	assert.ok(markdown.includes("需要のタイプ"), "should keep table content");
+	assert.ok(
+		!markdown.includes("Google スプレッドシートにエクスポート"),
+		"should not include export button label",
+	);
+	assert.ok(
+		!markdown.includes("表をコピー"),
+		"should not include copy button label",
+	);
+});
