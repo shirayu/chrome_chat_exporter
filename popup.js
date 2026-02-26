@@ -1,5 +1,6 @@
 const statusEl = document.getElementById("status");
-const exportBtn = document.getElementById("export");
+const exportClipboardBtn = document.getElementById("export-clipboard");
+const exportDownloadBtn = document.getElementById("export-download");
 const turnSelectRow = document.getElementById("turn-select-row");
 const turnSelect = document.getElementById("turn-select");
 const MARKDOWN_STYLE_STORAGE_KEY = "markdownStyle";
@@ -23,11 +24,6 @@ function getScope() {
 function getSelectedTurnIndex() {
 	const value = turnSelect.value;
 	return value ? Number.parseInt(value, 10) : null;
-}
-
-function getOutput() {
-	const selected = document.querySelector("input[name=output]:checked");
-	return selected ? selected.value : "clipboard";
 }
 
 function getFormat() {
@@ -90,7 +86,7 @@ async function ensureContentScript(tabId) {
 	}
 }
 
-async function requestExport(format) {
+async function requestExport(format, output) {
 	try {
 		const tab = await getActiveTab();
 		if (!tab || !tab.id) {
@@ -132,8 +128,8 @@ async function requestExport(format) {
 		});
 		const url = URL.createObjectURL(blob);
 
-		const output = getOutput();
-		if (output === "clipboard") {
+		const targetOutput = output === "download" ? "download" : "clipboard";
+		if (targetOutput === "clipboard") {
 			await navigator.clipboard.writeText(data);
 			setStatus(chrome.i18n.getMessage("statusCopied"), false);
 			return;
@@ -194,7 +190,12 @@ document.querySelectorAll("input[name=markdownStyle]").forEach((radio) => {
 	});
 });
 
-exportBtn.addEventListener("click", () => requestExport(getFormat()));
+exportClipboardBtn.addEventListener("click", () =>
+	requestExport(getFormat(), "clipboard"),
+);
+exportDownloadBtn.addEventListener("click", () =>
+	requestExport(getFormat(), "download"),
+);
 
 Promise.all([restoreMarkdownStyle(), getActiveTab()]).then(([, tab]) => {
 	applyI18n();
