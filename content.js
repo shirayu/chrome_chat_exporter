@@ -22,10 +22,22 @@
 			.trim();
 	}
 
+	function getVisibleText(node) {
+		if (!node) return "";
+		const clone = node.cloneNode(true);
+		const hiddenNodes = Array.from(
+			clone.querySelectorAll(".cdk-visually-hidden, [aria-hidden='true']"),
+		);
+		hiddenNodes.forEach((hiddenNode) => {
+			hiddenNode.remove();
+		});
+		return cleanText(clone.innerText || clone.textContent || "");
+	}
+
 	function getUserText(container) {
 		const node = container.querySelector(SELECTORS.userText);
 		if (!node) return "";
-		return cleanText(node.innerText || node.textContent || "");
+		return getVisibleText(node);
 	}
 
 	function getModelThoughts(container) {
