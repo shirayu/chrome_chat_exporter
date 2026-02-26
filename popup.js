@@ -2,6 +2,7 @@ const statusEl = document.getElementById("status");
 const exportBtn = document.getElementById("export");
 const turnSelectRow = document.getElementById("turn-select-row");
 const turnSelect = document.getElementById("turn-select");
+const MARKDOWN_STYLE_STORAGE_KEY = "markdownStyle";
 
 function applyI18n() {
 	document.querySelectorAll("[data-i18n]").forEach((el) => {
@@ -32,6 +33,37 @@ function getOutput() {
 function getFormat() {
 	const selected = document.querySelector("input[name=format]:checked");
 	return selected ? selected.value : "md";
+}
+
+function getMarkdownStyle() {
+	const selected = document.querySelector("input[name=markdownStyle]:checked");
+	return selected ? selected.value : "legacy";
+}
+
+async function restoreMarkdownStyle() {
+	try {
+		const stored = await chrome.storage.local.get(MARKDOWN_STYLE_STORAGE_KEY);
+		const value = stored?.[MARKDOWN_STYLE_STORAGE_KEY];
+		if (value !== "gemini" && value !== "legacy") return;
+		const input = document.querySelector(
+			`input[name=markdownStyle][value="${value}"]`,
+		);
+		if (input) {
+			input.checked = true;
+		}
+	} catch (error) {
+		console.error("[Gemini Export] failed to restore markdown style", error);
+	}
+}
+
+async function persistMarkdownStyle() {
+	try {
+		await chrome.storage.local.set({
+			[MARKDOWN_STYLE_STORAGE_KEY]: getMarkdownStyle(),
+		});
+	} catch (error) {
+		console.error("[Gemini Export] failed to save markdown style", error);
+	}
 }
 
 async function getActiveTab() {
@@ -70,6 +102,7 @@ async function requestExport(format) {
 			type: "EXPORT_GEMINI_CHAT",
 			scope: getScope(),
 			turnIndex: getSelectedTurnIndex(),
+			markdownStyle: getMarkdownStyle(),
 		};
 		console.debug("[Gemini Export] sendMessage payload", request);
 
@@ -155,10 +188,15 @@ function toggleTurnSelect() {
 document.querySelectorAll("input[name=scope]").forEach((radio) => {
 	radio.addEventListener("change", toggleTurnSelect);
 });
+document.querySelectorAll("input[name=markdownStyle]").forEach((radio) => {
+	radio.addEventListener("change", () => {
+		persistMarkdownStyle();
+	});
+});
 
 exportBtn.addEventListener("click", () => requestExport(getFormat()));
 
-getActiveTab().then((tab) => {
+Promise.all([restoreMarkdownStyle(), getActiveTab()]).then(([, tab]) => {
 	applyI18n();
 	if (
 		tab &&

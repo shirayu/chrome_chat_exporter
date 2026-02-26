@@ -332,3 +332,74 @@ test("user prompt hidden label is excluded from markdown export", () => {
 	);
 	assert.ok(response.data.markdown.includes("SynthIDはどうやって作れる？"));
 });
+
+test("markdown style option switches heading format", () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-user-hidden-label.html"),
+		"utf8",
+	);
+	const root = parseHtml(html);
+
+	global.document = {
+		querySelectorAll(selector) {
+			return root.querySelectorAll(selector);
+		},
+	};
+
+	global.window = {
+		__geminiChatExporterInjected: false,
+	};
+
+	let messageListener = null;
+	global.chrome = {
+		runtime: {
+			onMessage: {
+				addListener(listener) {
+					messageListener = listener;
+				},
+			},
+		},
+	};
+
+	delete require.cache[require.resolve("../content.js")];
+	require("../content.js");
+
+	assert.ok(messageListener, "message listener should be registered");
+
+	let defaultStyleResponse = null;
+	messageListener(
+		{ type: "EXPORT_GEMINI_CHAT", scope: "current" },
+		null,
+		(payload) => {
+			defaultStyleResponse = payload;
+		},
+	);
+	assert.ok(defaultStyleResponse?.ok, "default export should succeed");
+	assert.ok(defaultStyleResponse.data.markdown.includes("## Turn 1-1: User"));
+	assert.ok(defaultStyleResponse.data.markdown.includes("## Turn 1-2: Gemini"));
+
+	let legacyStyleResponse = null;
+	messageListener(
+		{ type: "EXPORT_GEMINI_CHAT", scope: "current", markdownStyle: "legacy" },
+		null,
+		(payload) => {
+			legacyStyleResponse = payload;
+		},
+	);
+	assert.ok(legacyStyleResponse?.ok, "legacy export should succeed");
+	assert.ok(legacyStyleResponse.data.markdown.includes("## Turn 1-1: User"));
+	assert.ok(legacyStyleResponse.data.markdown.includes("## Turn 1-2: Gemini"));
+
+	let geminiStyleResponse = null;
+	messageListener(
+		{ type: "EXPORT_GEMINI_CHAT", scope: "current", markdownStyle: "gemini" },
+		null,
+		(payload) => {
+			geminiStyleResponse = payload;
+		},
+	);
+	assert.ok(geminiStyleResponse?.ok, "gemini style export should succeed");
+	assert.ok(geminiStyleResponse.data.markdown.includes("## Turn 1"));
+	assert.ok(geminiStyleResponse.data.markdown.includes("### User"));
+	assert.ok(geminiStyleResponse.data.markdown.includes("### Gemini"));
+});

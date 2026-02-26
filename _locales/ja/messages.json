@@ -50,6 +50,12 @@
 	"formatHtml": {
 		"message": "HTML"
 	},
+	"markdownStyleGemini": {
+		"message": "ターン見出し形式"
+	},
+	"markdownStyleLegacy": {
+		"message": "連番ロール形式"
+	},
 	"exportButton": {
 		"message": "エクスポート"
 	},

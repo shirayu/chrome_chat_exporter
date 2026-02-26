@@ -20,6 +20,10 @@ Chrome extension that exports Gemini conversations as HTML or Markdown.
 - Format:
     - Markdown (default)
     - HTML
+- Markdown style:
+    - Role Numbering Style (default): `## Turn 1-1: User` / `## Turn 1-2: Gemini`
+    - Turn Heading Style: `## Turn 1` + `### User` / `### Gemini`
+    - The selected style is saved in popup UI.
 
 ## Notes
 

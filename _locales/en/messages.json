@@ -50,6 +50,12 @@
 	"formatHtml": {
 		"message": "HTML"
 	},
+	"markdownStyleGemini": {
+		"message": "Turn Heading Style"
+	},
+	"markdownStyleLegacy": {
+		"message": "Role Numbering Style"
+	},
 	"exportButton": {
 		"message": "Export"
 	},

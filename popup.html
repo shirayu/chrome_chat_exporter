@@ -42,6 +42,10 @@
         background: rgba(254, 243, 199, 0.7);
         border-color: rgba(217, 119, 6, 0.25);
       }
+      .section.markdown-style {
+        background: rgba(220, 252, 231, 0.72);
+        border-color: rgba(22, 163, 74, 0.3);
+      }
       .groups {
         display: grid;
         grid-template-columns: 1fr;
@@ -94,6 +98,10 @@
       .section.format .icon {
         background: #fef3c7;
         color: #b45309;
+      }
+      .section.markdown-style .icon {
+        background: #dcfce7;
+        color: #15803d;
       }
       .icon svg {
         width: 16px;
@@ -285,6 +293,43 @@
             </span>
             <span class="text">
             <span class="label" data-i18n="formatHtml">HTML</span>
+            </span>
+          </span>
+        </label>
+        </div>
+      </div>
+      <div class="section markdown-style">
+        <div class="option-group">
+          <label class="option">
+          <input type="radio" name="markdownStyle" value="legacy" checked />
+          <span class="stack">
+            <span class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <title>Legacy style markdown</title>
+                <path d="M5 6h14"></path>
+                <path d="M5 10h10"></path>
+                <path d="M5 14h14"></path>
+                <path d="M5 18h10"></path>
+              </svg>
+            </span>
+            <span class="text">
+            <span class="label" data-i18n="markdownStyleLegacy">連番ロール形式</span>
+            </span>
+          </span>
+        </label>
+        <label class="option">
+          <input type="radio" name="markdownStyle" value="gemini" />
+          <span class="stack">
+            <span class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <title>Gemini style markdown</title>
+                <path d="M4 7h16"></path>
+                <path d="M4 12h10"></path>
+                <path d="M4 17h14"></path>
+              </svg>
+            </span>
+            <span class="text">
+            <span class="label" data-i18n="markdownStyleGemini">ターン見出し形式</span>
             </span>
           </span>
         </label>

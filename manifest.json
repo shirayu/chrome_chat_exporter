@@ -3,7 +3,7 @@
 	"name": "__MSG_extName__",
 	"version": "0.1.0",
 	"description": "__MSG_extDescription__",
-	"permissions": ["activeTab", "downloads", "scripting"],
+	"permissions": ["activeTab", "downloads", "scripting", "storage"],
 	"host_permissions": ["https://gemini.google.com/*"],
 	"default_locale": "ja",
 	"action": {

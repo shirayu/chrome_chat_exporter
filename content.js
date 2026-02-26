@@ -228,7 +228,7 @@
 		].join("\n");
 	}
 
-	function buildMarkdown(turns) {
+	function buildGeminiStyleMarkdown(turns) {
 		const lines = [];
 		turns.forEach((turn, index) => {
 			lines.push(
@@ -249,7 +249,33 @@
 		return lines.join("\n");
 	}
 
-	function extract(scope, turnIndex) {
+	function buildLegacyStyleMarkdown(turns) {
+		const lines = [];
+		turns.forEach((turn, index) => {
+			lines.push("", `## Turn ${index + 1}-1: User`, "", turn.user || "");
+
+			if (turn.thoughts) {
+				lines.push(
+					"",
+					`## Turn ${index + 1}-1.5: 思考プロセス`,
+					"",
+					turn.thoughts,
+				);
+			}
+
+			lines.push("", `## Turn ${index + 1}-2: Gemini`, "", turn.model || "");
+		});
+		return lines.join("\n");
+	}
+
+	function buildMarkdown(turns, markdownStyle) {
+		if (markdownStyle === "legacy") {
+			return buildLegacyStyleMarkdown(turns);
+		}
+		return buildGeminiStyleMarkdown(turns);
+	}
+
+	function extract(scope, turnIndex, markdownStyle) {
 		const containers = pickConversations(scope, turnIndex);
 		const turns = containers.map((container) => ({
 			user: getUserText(container),
@@ -262,7 +288,7 @@
 		return {
 			turns,
 			html: buildHtml(turns),
-			markdown: buildMarkdown(turns),
+			markdown: buildMarkdown(turns, markdownStyle),
 		};
 	}
 
@@ -289,7 +315,9 @@
 				const turnIndex = Number.isInteger(message.turnIndex)
 					? message.turnIndex
 					: null;
-				const result = extract(scope, turnIndex);
+				const markdownStyle =
+					message.markdownStyle === "gemini" ? "gemini" : "legacy";
+				const result = extract(scope, turnIndex, markdownStyle);
 				sendResponse({ ok: true, data: result });
 				return true;
 			}
