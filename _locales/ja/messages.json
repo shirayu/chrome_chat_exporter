@@ -61,5 +61,8 @@
 	},
 	"turnListEmpty": {
 		"message": "会話が見つかりません"
+	},
+	"autoCloseAfterAction": {
+		"message": "完了後に自動で閉じる"
 	}
 }

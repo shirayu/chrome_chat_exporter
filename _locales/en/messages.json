@@ -61,5 +61,8 @@
 	},
 	"turnListEmpty": {
 		"message": "No conversations found"
+	},
+	"autoCloseAfterAction": {
+		"message": "Close automatically after action"
 	}
 }

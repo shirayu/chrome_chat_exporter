@@ -140,6 +140,12 @@
         color: #334155;
         min-height: 16px;
       }
+      .setting-row {
+        margin-top: 10px;
+      }
+      .setting-row .option {
+        padding: 8px 10px;
+      }
       .warn {
         color: #b91c1c;
       }
@@ -228,6 +234,14 @@
           </svg>
           <span class="action-label" data-i18n="outputDownload">ダウンロード</span>
         </button>
+      </div>
+      <div class="setting-row">
+        <label class="option">
+          <input id="auto-close" type="checkbox" />
+          <span class="text">
+            <span class="label" data-i18n="autoCloseAfterAction">完了後に自動で閉じる</span>
+          </span>
+        </label>
       </div>
     </div>
     <script src="popup.js"></script>

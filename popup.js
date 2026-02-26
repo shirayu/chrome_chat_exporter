@@ -3,7 +3,9 @@ const exportClipboardBtn = document.getElementById("export-clipboard");
 const exportDownloadBtn = document.getElementById("export-download");
 const turnSelectRow = document.getElementById("turn-select-row");
 const turnSelect = document.getElementById("turn-select");
+const autoCloseCheckbox = document.getElementById("auto-close");
 const MARKDOWN_STYLE_STORAGE_KEY = "markdownStyle";
+const AUTO_CLOSE_STORAGE_KEY = "autoCloseOnComplete";
 
 function applyI18n() {
 	document.querySelectorAll("[data-i18n]").forEach((el) => {
@@ -60,6 +62,35 @@ async function persistMarkdownStyle() {
 	} catch (error) {
 		console.error("[Gemini Export] failed to save markdown style", error);
 	}
+}
+
+async function restoreAutoCloseSetting() {
+	try {
+		const stored = await chrome.storage.local.get(AUTO_CLOSE_STORAGE_KEY);
+		const value = stored?.[AUTO_CLOSE_STORAGE_KEY];
+		if (typeof value !== "boolean") return;
+		autoCloseCheckbox.checked = value;
+	} catch (error) {
+		console.error(
+			"[Gemini Export] failed to restore auto close setting",
+			error,
+		);
+	}
+}
+
+async function persistAutoCloseSetting() {
+	try {
+		await chrome.storage.local.set({
+			[AUTO_CLOSE_STORAGE_KEY]: autoCloseCheckbox.checked,
+		});
+	} catch (error) {
+		console.error("[Gemini Export] failed to save auto close setting", error);
+	}
+}
+
+function closePopupIfEnabled() {
+	if (!autoCloseCheckbox.checked) return;
+	window.close();
 }
 
 async function getActiveTab() {
@@ -132,6 +163,7 @@ async function requestExport(format, output) {
 		if (targetOutput === "clipboard") {
 			await navigator.clipboard.writeText(data);
 			setStatus(chrome.i18n.getMessage("statusCopied"), false);
+			closePopupIfEnabled();
 			return;
 		}
 
@@ -142,6 +174,7 @@ async function requestExport(format, output) {
 
 		await chrome.downloads.download({ url, filename, saveAs: true });
 		setStatus(chrome.i18n.getMessage("statusDownloadStarted"), false);
+		closePopupIfEnabled();
 	} catch (_error) {
 		console.error("[Gemini Export] export failed", _error);
 		setStatus(chrome.i18n.getMessage("statusExportFailed"), true);
@@ -189,6 +222,9 @@ document.querySelectorAll("input[name=markdownStyle]").forEach((radio) => {
 		persistMarkdownStyle();
 	});
 });
+autoCloseCheckbox.addEventListener("change", () => {
+	persistAutoCloseSetting();
+});
 
 exportClipboardBtn.addEventListener("click", () =>
 	requestExport(getFormat(), "clipboard"),
@@ -197,7 +233,11 @@ exportDownloadBtn.addEventListener("click", () =>
 	requestExport(getFormat(), "download"),
 );
 
-Promise.all([restoreMarkdownStyle(), getActiveTab()]).then(([, tab]) => {
+Promise.all([
+	restoreMarkdownStyle(),
+	restoreAutoCloseSetting(),
+	getActiveTab(),
+]).then(([, , tab]) => {
 	applyI18n();
 	if (
 		tab &&
