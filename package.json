@@ -8,19 +8,18 @@
 		"preinstall": "npx only-allow pnpm",
 		"format": "run-p format:biome format:markdownlint",
 		"format:biome": "biome format --write",
-		"format:markdownlint": "markdownlint -f ./*.md doc/*.md",
+		"format:markdownlint": "markdownlint-cli2 --fix",
 		"lint": "run-p lint:biome lint:md",
 		"lint:biome": "biome check",
-		"lint:md": "markdownlint *.md */*.md",
+		"lint:md": "markdownlint-cli2",
 		"test:biome": "biome check",
-		"test:md": "markdownlint *.md",
 		"test:unit": "node --test test/*.test.js",
-		"test": "run-s test:biome test:md test:unit"
+		"test": "run-s test:biome test:unit"
 	},
 	"version": "1.0.0",
 	"devDependencies": {
 		"@biomejs/biome": "2.4.4",
-		"markdownlint-cli": "^0.47.0",
+		"markdownlint-cli2": "^0.21.0",
 		"npm-run-all2": "^8.0.4"
 	},
 	"engines": {
