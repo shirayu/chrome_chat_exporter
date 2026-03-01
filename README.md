@@ -2,6 +2,8 @@
 
 Chrome extension that exports Gemini conversations as HTML or Markdown.
 
+![Screenshot](screenshot.avif)
+
 ## Usage
 
 1. Open Chrome Extensions and choose "Load unpacked", then select this folder.
