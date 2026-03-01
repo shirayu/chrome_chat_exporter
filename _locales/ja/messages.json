@@ -64,5 +64,8 @@
 	},
 	"autoCloseAfterAction": {
 		"message": "完了後に自動で閉じる"
+	},
+	"includeThoughts": {
+		"message": "思考プロセスを含める"
 	}
 }

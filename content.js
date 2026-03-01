@@ -10,9 +10,11 @@
 		modelMarkdown: ".response-content .markdown",
 		modelFallback: ".response-content",
 		thoughtsContainer: ".thoughts-container",
+		thoughtsToggleButton: "[data-test-id='thoughts-header-button']",
 	};
 
 	const markdown = window.__geminiMarkdown || {};
+	const THOUGHTS_HEADING = "Thought Process";
 
 	function cleanText(text) {
 		return text
@@ -116,6 +118,51 @@
 		return chunks.join("\n");
 	}
 
+	function sleep(ms) {
+		return new Promise((resolve) => {
+			setTimeout(resolve, ms);
+		});
+	}
+
+	function getThoughtsToggleButton(container) {
+		return container.querySelector(SELECTORS.thoughtsToggleButton);
+	}
+
+	function hasExpandedThoughts(container) {
+		return Boolean(getModelThoughts(container));
+	}
+
+	async function ensureThoughtsExpanded(container) {
+		if (hasExpandedThoughts(container)) {
+			return false;
+		}
+
+		const toggleButton = getThoughtsToggleButton(container);
+		if (!toggleButton || typeof toggleButton.click !== "function") {
+			return false;
+		}
+
+		toggleButton.click();
+
+		for (let i = 0; i < 10; i += 1) {
+			if (hasExpandedThoughts(container)) {
+				return true;
+			}
+			await sleep(50);
+		}
+
+		return false;
+	}
+
+	async function restoreThoughtsState(container, shouldCollapse) {
+		if (!shouldCollapse) return;
+		const toggleButton = getThoughtsToggleButton(container);
+		if (!toggleButton || typeof toggleButton.click !== "function") {
+			return;
+		}
+		toggleButton.click();
+	}
+
 	function getModelHtml(container) {
 		// Get all markdown nodes, skip empty ones and thoughts
 		const markdownNodes = Array.from(
@@ -162,7 +209,7 @@
 		return nodes;
 	}
 
-	function buildHtml(turns) {
+	function buildHtml(turns, includeThoughts) {
 		const body = turns
 			.map((turn, index) => {
 				const userHtml = escapeHtml(turn.user).replace(/\n/g, "<br>");
@@ -183,10 +230,10 @@
 					`  </div>`,
 				];
 
-				if (thoughtsHtml) {
+				if (includeThoughts && thoughtsHtml) {
 					parts.push(
 						`  <div class="role thoughts">`,
-						`    <h3>思考プロセス</h3>`,
+						`    <h3>${THOUGHTS_HEADING}</h3>`,
 						`    <div class="content">${thoughtsHtml}</div>`,
 						`  </div>`,
 					);
@@ -228,7 +275,7 @@
 		].join("\n");
 	}
 
-	function buildGeminiStyleMarkdown(turns) {
+	function buildGeminiStyleMarkdown(turns, includeThoughts) {
 		const lines = [];
 		turns.forEach((turn, index) => {
 			lines.push(
@@ -240,8 +287,8 @@
 				turn.user || "",
 			);
 
-			if (turn.thoughts) {
-				lines.push("", "### 思考プロセス", "", turn.thoughts);
+			if (includeThoughts && turn.thoughts) {
+				lines.push("", `### ${THOUGHTS_HEADING}`, "", turn.thoughts);
 			}
 
 			lines.push("", "### Gemini", "", turn.model || "");
@@ -249,15 +296,15 @@
 		return lines.join("\n");
 	}
 
-	function buildLegacyStyleMarkdown(turns) {
+	function buildLegacyStyleMarkdown(turns, includeThoughts) {
 		const lines = [];
 		turns.forEach((turn, index) => {
 			lines.push("", `## Turn ${index + 1}-1: User`, "", turn.user || "");
 
-			if (turn.thoughts) {
+			if (includeThoughts && turn.thoughts) {
 				lines.push(
 					"",
-					`## Turn ${index + 1}-1.5: 思考プロセス`,
+					`## Turn ${index + 1}-1.5: ${THOUGHTS_HEADING}`,
 					"",
 					turn.thoughts,
 				);
@@ -268,27 +315,38 @@
 		return lines.join("\n");
 	}
 
-	function buildMarkdown(turns, markdownStyle) {
+	function buildMarkdown(turns, markdownStyle, includeThoughts) {
 		if (markdownStyle === "legacy") {
-			return buildLegacyStyleMarkdown(turns);
+			return buildLegacyStyleMarkdown(turns, includeThoughts);
 		}
-		return buildGeminiStyleMarkdown(turns);
+		return buildGeminiStyleMarkdown(turns, includeThoughts);
 	}
 
-	function extract(scope, turnIndex, markdownStyle) {
+	async function extract(scope, turnIndex, markdownStyle, includeThoughts) {
 		const containers = pickConversations(scope, turnIndex);
-		const turns = containers.map((container) => ({
-			user: getUserText(container),
-			thoughts: getModelThoughts(container),
-			thoughtsHtml: getModelThoughtsHtml(container),
-			model: getModelText(container),
-			modelHtml: getModelHtml(container),
-		}));
+		const turns = [];
+
+		for (const container of containers) {
+			const shouldRestoreThoughts = includeThoughts
+				? await ensureThoughtsExpanded(container)
+				: false;
+			try {
+				turns.push({
+					user: getUserText(container),
+					thoughts: getModelThoughts(container),
+					thoughtsHtml: getModelThoughtsHtml(container),
+					model: getModelText(container),
+					modelHtml: getModelHtml(container),
+				});
+			} finally {
+				await restoreThoughtsState(container, shouldRestoreThoughts);
+			}
+		}
 
 		return {
 			turns,
-			html: buildHtml(turns),
-			markdown: buildMarkdown(turns, markdownStyle),
+			html: buildHtml(turns, includeThoughts),
+			markdown: buildMarkdown(turns, markdownStyle, includeThoughts),
 		};
 	}
 
@@ -306,21 +364,27 @@
 
 	chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 		if (!message || !message.type) return;
+		if (message.type === "EXPORT_GEMINI_CHAT") {
+			const scope =
+				message.scope === "current" || message.scope === "select"
+					? message.scope
+					: "all";
+			const turnIndex = Number.isInteger(message.turnIndex)
+				? message.turnIndex
+				: null;
+			const markdownStyle =
+				message.markdownStyle === "gemini" ? "gemini" : "legacy";
+			const includeThoughts = message.includeThoughts !== false;
+			extract(scope, turnIndex, markdownStyle, includeThoughts)
+				.then((result) => {
+					sendResponse({ ok: true, data: result });
+				})
+				.catch((error) => {
+					sendResponse({ ok: false, error: String(error) });
+				});
+			return true;
+		}
 		try {
-			if (message.type === "EXPORT_GEMINI_CHAT") {
-				const scope =
-					message.scope === "current" || message.scope === "select"
-						? message.scope
-						: "all";
-				const turnIndex = Number.isInteger(message.turnIndex)
-					? message.turnIndex
-					: null;
-				const markdownStyle =
-					message.markdownStyle === "gemini" ? "gemini" : "legacy";
-				const result = extract(scope, turnIndex, markdownStyle);
-				sendResponse({ ok: true, data: result });
-				return true;
-			}
 			if (message.type === "LIST_GEMINI_TURNS") {
 				const turns = buildTurnList();
 				sendResponse({ ok: true, data: { turns } });

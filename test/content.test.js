@@ -68,6 +68,12 @@ class ElementNode {
 		this.childNodes.push(node);
 	}
 
+	click() {
+		if (typeof this.onclick === "function") {
+			this.onclick();
+		}
+	}
+
 	removeChild(node) {
 		const index = this.childNodes.indexOf(node);
 		if (index === -1) return;
@@ -281,13 +287,64 @@ function parseHtml(html) {
 	return root;
 }
 
-test("user prompt hidden label is excluded from markdown export", () => {
-	const html = fs.readFileSync(
-		path.join(__dirname, "fixtures/gemini-user-hidden-label.html"),
-		"utf8",
-	);
-	const root = parseHtml(html);
+function cloneNodes(nodes) {
+	return nodes.map((node) => node.cloneNode(true));
+}
 
+function replaceChildren(target, nodes) {
+	target.childNodes = [];
+	nodes.forEach((node) => {
+		target.appendChild(node);
+	});
+}
+
+function setupThoughtsToggle(root, expandedRoot) {
+	const currentContainer = root.querySelector(".thoughts-container");
+	const expandedContainer = expandedRoot.querySelector(".thoughts-container");
+	const toggleButton = root.querySelector(
+		"[data-test-id='thoughts-header-button']",
+	);
+	const expandedButton = expandedRoot.querySelector(
+		"[data-test-id='thoughts-header-button']",
+	);
+	assert.ok(currentContainer, "current thoughts container not found");
+	assert.ok(expandedContainer, "expanded thoughts container not found");
+	assert.ok(toggleButton, "thoughts toggle button not found");
+	assert.ok(expandedButton, "expanded thoughts toggle button not found");
+
+	const collapsedChildren = cloneNodes(currentContainer.childNodes);
+	const expandedChildren = cloneNodes(expandedContainer.childNodes);
+	const collapsedLabel = toggleButton.textContent;
+	const expandedLabel = expandedButton.textContent;
+
+	toggleButton.onclick = () => {
+		const isExpanded = Boolean(
+			currentContainer.querySelector(".thoughts-container .markdown") ||
+				currentContainer.querySelector(".markdown"),
+		);
+		if (isExpanded) {
+			replaceChildren(currentContainer, cloneNodes(collapsedChildren));
+		} else {
+			replaceChildren(currentContainer, cloneNodes(expandedChildren));
+		}
+		const buttonAfterToggle = root.querySelector(
+			"[data-test-id='thoughts-header-button']",
+		);
+		if (buttonAfterToggle) {
+			buttonAfterToggle.onclick = toggleButton.onclick;
+			buttonAfterToggle.attributes["data-toggle-state"] = isExpanded
+				? "collapsed"
+				: "expanded";
+			if (isExpanded) {
+				assert.equal(buttonAfterToggle.textContent, collapsedLabel);
+			} else {
+				assert.equal(buttonAfterToggle.textContent, expandedLabel);
+			}
+		}
+	};
+}
+
+function setupContentScript(root) {
 	global.document = {
 		querySelectorAll(selector) {
 			return root.querySelectorAll(selector);
@@ -311,17 +368,29 @@ test("user prompt hidden label is excluded from markdown export", () => {
 
 	delete require.cache[require.resolve("../content.js")];
 	require("../content.js");
-
 	assert.ok(messageListener, "message listener should be registered");
+	return messageListener;
+}
 
-	let response = null;
-	messageListener(
-		{ type: "EXPORT_GEMINI_CHAT", scope: "current" },
-		null,
-		(payload) => {
-			response = payload;
-		},
+function requestExport(messageListener, message) {
+	return new Promise((resolve) => {
+		messageListener(message, null, (payload) => {
+			resolve(payload);
+		});
+	});
+}
+
+test("user prompt hidden label is excluded from markdown export", async () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-user-hidden-label.html"),
+		"utf8",
 	);
+	const root = parseHtml(html);
+	const messageListener = setupContentScript(root);
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+	});
 
 	assert.ok(response?.ok, "export should succeed");
 	assert.equal(response.data.turns.length, 1);
@@ -333,73 +402,135 @@ test("user prompt hidden label is excluded from markdown export", () => {
 	assert.ok(response.data.markdown.includes("SynthIDはどうやって作れる？"));
 });
 
-test("markdown style option switches heading format", () => {
+test("markdown style option switches heading format", async () => {
 	const html = fs.readFileSync(
 		path.join(__dirname, "fixtures/gemini-user-hidden-label.html"),
 		"utf8",
 	);
 	const root = parseHtml(html);
-
-	global.document = {
-		querySelectorAll(selector) {
-			return root.querySelectorAll(selector);
-		},
-	};
-
-	global.window = {
-		__geminiChatExporterInjected: false,
-	};
-
-	let messageListener = null;
-	global.chrome = {
-		runtime: {
-			onMessage: {
-				addListener(listener) {
-					messageListener = listener;
-				},
-			},
-		},
-	};
-
-	delete require.cache[require.resolve("../content.js")];
-	require("../content.js");
-
-	assert.ok(messageListener, "message listener should be registered");
-
-	let defaultStyleResponse = null;
-	messageListener(
-		{ type: "EXPORT_GEMINI_CHAT", scope: "current" },
-		null,
-		(payload) => {
-			defaultStyleResponse = payload;
-		},
-	);
+	const messageListener = setupContentScript(root);
+	const defaultStyleResponse = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+	});
 	assert.ok(defaultStyleResponse?.ok, "default export should succeed");
 	assert.ok(defaultStyleResponse.data.markdown.includes("## Turn 1-1: User"));
 	assert.ok(defaultStyleResponse.data.markdown.includes("## Turn 1-2: Gemini"));
 
-	let legacyStyleResponse = null;
-	messageListener(
-		{ type: "EXPORT_GEMINI_CHAT", scope: "current", markdownStyle: "legacy" },
-		null,
-		(payload) => {
-			legacyStyleResponse = payload;
-		},
-	);
+	const legacyStyleResponse = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "legacy",
+	});
 	assert.ok(legacyStyleResponse?.ok, "legacy export should succeed");
 	assert.ok(legacyStyleResponse.data.markdown.includes("## Turn 1-1: User"));
 	assert.ok(legacyStyleResponse.data.markdown.includes("## Turn 1-2: Gemini"));
 
-	let geminiStyleResponse = null;
-	messageListener(
-		{ type: "EXPORT_GEMINI_CHAT", scope: "current", markdownStyle: "gemini" },
-		null,
-		(payload) => {
-			geminiStyleResponse = payload;
-		},
-	);
+	const geminiStyleResponse = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+	});
 	assert.ok(geminiStyleResponse?.ok, "gemini style export should succeed");
 	assert.ok(geminiStyleResponse.data.markdown.includes("## Turn 1"));
 	assert.ok(geminiStyleResponse.data.markdown.includes("### User"));
 	assert.ok(geminiStyleResponse.data.markdown.includes("### Gemini"));
+});
+
+test("thoughts are included by default and can be disabled", async () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-thoughts-toggle.html"),
+		"utf8",
+	);
+	const root = parseHtml(html);
+	const messageListener = setupContentScript(root);
+	const defaultResponse = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+	});
+
+	assert.ok(defaultResponse?.ok, "default export should succeed");
+	assert.equal(
+		defaultResponse.data.turns[0].thoughts,
+		"まず要件を整理します。次に出力形式を分けて考えます。",
+	);
+	assert.ok(
+		defaultResponse.data.markdown.includes("### Thought Process"),
+		"default markdown should include thoughts heading",
+	);
+	assert.ok(
+		defaultResponse.data.markdown.includes("まず要件を整理します。"),
+		"default markdown should include thoughts content",
+	);
+	assert.ok(
+		defaultResponse.data.html.includes("<h3>Thought Process</h3>"),
+		"default html should include thoughts section",
+	);
+
+	const hiddenResponse = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+		includeThoughts: false,
+	});
+
+	assert.ok(hiddenResponse?.ok, "thoughts-disabled export should succeed");
+	assert.equal(
+		hiddenResponse.data.turns[0].thoughts,
+		"まず要件を整理します。次に出力形式を分けて考えます。",
+	);
+	assert.ok(
+		!hiddenResponse.data.markdown.includes("### Thought Process"),
+		"markdown should omit thoughts heading when disabled",
+	);
+	assert.ok(
+		!hiddenResponse.data.markdown.includes("まず要件を整理します。"),
+		"markdown should omit thoughts content when disabled",
+	);
+	assert.ok(
+		!hiddenResponse.data.html.includes("<h3>Thought Process</h3>"),
+		"html should omit thoughts section when disabled",
+	);
+});
+
+test("collapsed thoughts are expanded for export and restored afterward", async () => {
+	const collapsedHtml = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-thoughts-collapsed.html"),
+		"utf8",
+	);
+	const expandedHtml = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-thoughts-expanded.html"),
+		"utf8",
+	);
+	const root = parseHtml(collapsedHtml);
+	const expandedRoot = parseHtml(expandedHtml);
+	setupThoughtsToggle(root, expandedRoot);
+	const messageListener = setupContentScript(root);
+
+	assert.equal(root.querySelector(".thoughts-container .markdown"), null);
+
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+		includeThoughts: true,
+	});
+
+	assert.ok(response?.ok, "export should succeed");
+	assert.ok(
+		response.data.markdown.includes("### Thought Process"),
+		"collapsed thoughts should be exported after auto expand",
+	);
+	assert.ok(
+		response.data.turns[0].thoughts.includes(
+			"Assessing Difficulty of Info Geom",
+		),
+		"expanded thoughts text should be captured",
+	);
+	assert.equal(
+		root.querySelector(".thoughts-container .markdown"),
+		null,
+		"thoughts should be restored to collapsed state after export",
+	);
 });

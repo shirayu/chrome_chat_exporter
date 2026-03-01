@@ -64,5 +64,8 @@
 	},
 	"autoCloseAfterAction": {
 		"message": "Close automatically after action"
+	},
+	"includeThoughts": {
+		"message": "Include thoughts"
 	}
 }

@@ -4,8 +4,10 @@ const exportDownloadBtn = document.getElementById("export-download");
 const turnSelectRow = document.getElementById("turn-select-row");
 const turnSelect = document.getElementById("turn-select");
 const autoCloseCheckbox = document.getElementById("auto-close");
+const includeThoughtsCheckbox = document.getElementById("include-thoughts");
 const MARKDOWN_STYLE_STORAGE_KEY = "markdownStyle";
 const AUTO_CLOSE_STORAGE_KEY = "autoCloseOnComplete";
+const INCLUDE_THOUGHTS_STORAGE_KEY = "includeThoughts";
 
 function applyI18n() {
 	document.querySelectorAll("[data-i18n]").forEach((el) => {
@@ -78,6 +80,20 @@ async function restoreAutoCloseSetting() {
 	}
 }
 
+async function restoreIncludeThoughtsSetting() {
+	try {
+		const stored = await chrome.storage.local.get(INCLUDE_THOUGHTS_STORAGE_KEY);
+		const value = stored?.[INCLUDE_THOUGHTS_STORAGE_KEY];
+		if (typeof value !== "boolean") return;
+		includeThoughtsCheckbox.checked = value;
+	} catch (error) {
+		console.error(
+			"[Gemini Export] failed to restore include thoughts setting",
+			error,
+		);
+	}
+}
+
 async function persistAutoCloseSetting() {
 	try {
 		await chrome.storage.local.set({
@@ -85,6 +101,19 @@ async function persistAutoCloseSetting() {
 		});
 	} catch (error) {
 		console.error("[Gemini Export] failed to save auto close setting", error);
+	}
+}
+
+async function persistIncludeThoughtsSetting() {
+	try {
+		await chrome.storage.local.set({
+			[INCLUDE_THOUGHTS_STORAGE_KEY]: includeThoughtsCheckbox.checked,
+		});
+	} catch (error) {
+		console.error(
+			"[Gemini Export] failed to save include thoughts setting",
+			error,
+		);
 	}
 }
 
@@ -130,6 +159,7 @@ async function requestExport(format, output) {
 			scope: getScope(),
 			turnIndex: getSelectedTurnIndex(),
 			markdownStyle: getMarkdownStyle(),
+			includeThoughts: includeThoughtsCheckbox.checked,
 		};
 		console.debug("[Gemini Export] sendMessage payload", request);
 
@@ -225,6 +255,9 @@ document.querySelectorAll("input[name=markdownStyle]").forEach((radio) => {
 autoCloseCheckbox.addEventListener("change", () => {
 	persistAutoCloseSetting();
 });
+includeThoughtsCheckbox.addEventListener("change", () => {
+	persistIncludeThoughtsSetting();
+});
 
 exportClipboardBtn.addEventListener("click", () =>
 	requestExport(getFormat(), "clipboard"),
@@ -236,8 +269,9 @@ exportDownloadBtn.addEventListener("click", () =>
 Promise.all([
 	restoreMarkdownStyle(),
 	restoreAutoCloseSetting(),
+	restoreIncludeThoughtsSetting(),
 	getActiveTab(),
-]).then(([, , tab]) => {
+]).then(([, , , tab]) => {
 	applyI18n();
 	if (
 		tab &&
