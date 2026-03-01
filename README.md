@@ -1,10 +1,12 @@
 # Chat Exporter
 
-Chrome extension that exports Gemini conversations as HTML or Markdown.
+Chrome extension that exports chat conversations as HTML or Markdown.
 
 ![Screenshot](screenshot.avif)
 
 ## Usage
+
+The current supported website is **Gemini**.
 
 1. Open Chrome Extensions and choose "Load unpacked", then select this folder.
 2. Open `https://gemini.google.com/` and a chat thread.
