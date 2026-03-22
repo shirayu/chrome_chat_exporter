@@ -18,8 +18,8 @@
 	},
 	"version": "1.0.0",
 	"devDependencies": {
-		"@biomejs/biome": "2.4.7",
-		"markdownlint-cli2": "^0.21.0",
+		"@biomejs/biome": "2.4.8",
+		"markdownlint-cli2": "^0.22.0",
 		"npm-run-all2": "^8.0.4"
 	},
 	"engines": {
