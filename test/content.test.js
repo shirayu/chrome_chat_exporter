@@ -534,3 +534,32 @@ test("collapsed thoughts are expanded for export and restored afterward", async 
 		"thoughts should be restored to collapsed state after export",
 	);
 });
+
+test("shared Gemini page sample is exported", async () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-share-page-minimal.html"),
+		"utf8",
+	);
+	const root = parseHtml(html);
+	const messageListener = setupContentScript(root);
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+		includeThoughts: false,
+	});
+
+	assert.ok(response?.ok, "shared page export should succeed");
+	assert.equal(response.data.turns.length, 1);
+	assert.equal(response.data.turns[0].user, "共有ページでも読める？");
+	assert.ok(
+		response.data.turns[0].model.includes(
+			"共有ページの DOM でも抽出できます。",
+		),
+		"shared page model response should be captured",
+	);
+	assert.ok(
+		response.data.markdown.includes("### Gemini"),
+		"shared page markdown should include Gemini heading",
+	);
+});

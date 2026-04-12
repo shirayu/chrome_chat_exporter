@@ -149,7 +149,7 @@ async function ensureContentScript(tabId) {
 async function requestExport(format, output) {
 	try {
 		const tab = await getActiveTab();
-		if (!tab || !tab.id) {
+		if (!tab?.id) {
 			setStatus(chrome.i18n.getMessage("statusNoTab"), true);
 			return;
 		}
@@ -172,7 +172,7 @@ async function requestExport(format, output) {
 		const response = await chrome.tabs.sendMessage(tab.id, request);
 		console.debug("[Gemini Export] response", response);
 
-		if (!response || !response.ok) {
+		if (!response?.ok) {
 			if (response?.error) {
 				console.error("[Gemini Export] content error", response.error);
 			}
@@ -218,7 +218,7 @@ async function loadTurnOptions(tabId) {
 		const response = await chrome.tabs.sendMessage(tabId, {
 			type: "LIST_GEMINI_TURNS",
 		});
-		if (!response || !response.ok) return;
+		if (!response?.ok) return;
 		const turns = response.data.turns || [];
 		turnSelect.innerHTML = "";
 		if (turns.length === 0) {

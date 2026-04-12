@@ -5,10 +5,12 @@
 	window.__geminiChatExporterInjected = true;
 
 	const SELECTORS = {
-		conversation: ".conversation-container",
+		conversation: ".conversation-container, .share-turn-viewer",
 		userText: ".user-query-container .query-text",
-		modelMarkdown: ".response-content .markdown",
-		modelFallback: ".response-content",
+		modelMarkdown:
+			".response-content .markdown, .response-container-content .markdown, .message-content .markdown",
+		modelFallback:
+			".response-content, .response-container-content, .message-content",
 		thoughtsContainer: ".thoughts-container",
 		thoughtsToggleButton: "[data-test-id='thoughts-header-button']",
 	};
@@ -363,7 +365,7 @@
 	}
 
 	chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-		if (!message || !message.type) return;
+		if (!message?.type) return;
 		if (message.type === "EXPORT_GEMINI_CHAT") {
 			const scope =
 				message.scope === "current" || message.scope === "select"
