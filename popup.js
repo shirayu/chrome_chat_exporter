@@ -5,9 +5,12 @@ const turnSelectRow = document.getElementById("turn-select-row");
 const turnSelect = document.getElementById("turn-select");
 const autoCloseCheckbox = document.getElementById("auto-close");
 const includeThoughtsCheckbox = document.getElementById("include-thoughts");
+const filenameFormatInput = document.getElementById("filename-format");
 const MARKDOWN_STYLE_STORAGE_KEY = "markdownStyle";
 const AUTO_CLOSE_STORAGE_KEY = "autoCloseOnComplete";
 const INCLUDE_THOUGHTS_STORAGE_KEY = "includeThoughts";
+const FILENAME_FORMAT_STORAGE_KEY = "filenameFormat";
+const DEFAULT_FILENAME_FORMAT = "{date}_{time}-{toolname}";
 
 function applyI18n() {
 	document.querySelectorAll("[data-i18n]").forEach((el) => {
@@ -92,6 +95,47 @@ async function restoreIncludeThoughtsSetting() {
 			error,
 		);
 	}
+}
+
+async function restoreFilenameFormat() {
+	try {
+		const stored = await chrome.storage.local.get(FILENAME_FORMAT_STORAGE_KEY);
+		const value = stored?.[FILENAME_FORMAT_STORAGE_KEY];
+		filenameFormatInput.value =
+			typeof value === "string" && value.trim()
+				? value
+				: DEFAULT_FILENAME_FORMAT;
+	} catch (error) {
+		console.error("[Gemini Export] failed to restore filename format", error);
+		filenameFormatInput.value = DEFAULT_FILENAME_FORMAT;
+	}
+}
+
+async function persistFilenameFormat() {
+	try {
+		await chrome.storage.local.set({
+			[FILENAME_FORMAT_STORAGE_KEY]:
+				filenameFormatInput.value || DEFAULT_FILENAME_FORMAT,
+		});
+	} catch (error) {
+		console.error("[Gemini Export] failed to save filename format", error);
+	}
+}
+
+function buildFilename(toolname, scope, extension) {
+	const now = new Date();
+	const pad = (n) => String(n).padStart(2, "0");
+	const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+	const time = `${pad(now.getHours())}-${pad(now.getMinutes())}`;
+	const format = filenameFormatInput.value.trim() || DEFAULT_FILENAME_FORMAT;
+	const name = format
+		.replace(/\{date\}/g, date)
+		.replace(/\{time\}/g, time)
+		.replace(/\{toolname\}/g, toolname)
+		.replace(/\{scope\}/g, scope)
+		.replace(/\{ext\}/g, extension);
+	const hasExt = format.includes("{ext}");
+	return hasExt ? name : `${name}.${extension}`;
 }
 
 async function persistAutoCloseSetting() {
@@ -200,7 +244,14 @@ async function requestExport(format, output) {
 		const scope = getScope();
 		const scopeLabel =
 			scope === "current" ? "current" : scope === "select" ? "select" : "all";
-		const filename = `gemini_${scopeLabel}_${Date.now()}.${extension}`;
+		const toolname = tab.url?.includes("gemini.google.com")
+			? "gemini"
+			: tab.url?.includes("claude.ai")
+				? "claude"
+				: tab.url?.includes("chatgpt.com")
+					? "chatgpt"
+					: "chat";
+		const filename = buildFilename(toolname, scopeLabel, extension);
 
 		await chrome.downloads.download({ url, filename, saveAs: true });
 		setStatus(chrome.i18n.getMessage("statusDownloadStarted"), false);
@@ -258,6 +309,12 @@ autoCloseCheckbox.addEventListener("change", () => {
 includeThoughtsCheckbox.addEventListener("change", () => {
 	persistIncludeThoughtsSetting();
 });
+filenameFormatInput.addEventListener("change", () => {
+	persistFilenameFormat();
+});
+filenameFormatInput.addEventListener("blur", () => {
+	persistFilenameFormat();
+});
 
 exportClipboardBtn.addEventListener("click", () =>
 	requestExport(getFormat(), "clipboard"),
@@ -270,8 +327,9 @@ Promise.all([
 	restoreMarkdownStyle(),
 	restoreAutoCloseSetting(),
 	restoreIncludeThoughtsSetting(),
+	restoreFilenameFormat(),
 	getActiveTab(),
-]).then(([, , , tab]) => {
+]).then(([, , , , tab]) => {
 	applyI18n();
 	if (
 		tab &&

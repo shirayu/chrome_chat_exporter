@@ -67,5 +67,11 @@
 	},
 	"includeThoughts": {
 		"message": "Include thoughts"
+	},
+	"filenameFormatLabel": {
+		"message": "Filename format"
+	},
+	"filenameFormatHint": {
+		"message": "Available: {date} {time} {toolname} {scope} {ext}"
 	}
 }

@@ -67,5 +67,11 @@
 	},
 	"includeThoughts": {
 		"message": "思考プロセスを含める"
+	},
+	"filenameFormatLabel": {
+		"message": "ファイル名フォーマット"
+	},
+	"filenameFormatHint": {
+		"message": "使用可能: {date} {time} {toolname} {scope} {ext}"
 	}
 }
