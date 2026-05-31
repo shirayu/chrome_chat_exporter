@@ -3,16 +3,16 @@
 		"message": "Chat Exporter"
 	},
 	"extDescription": {
-		"message": "Gemini の会話を HTML / Markdown でエクスポートします。"
+		"message": "AI チャットの会話を HTML / Markdown でエクスポートします。"
 	},
 	"statusOpenGemini": {
-		"message": "Gemini のページで開いてください。"
+		"message": "対応ページで開いてください（Gemini / Claude）。"
 	},
 	"statusReady": {
 		"message": "エクスポート形式を選んでください。"
 	},
 	"statusNoTab": {
-		"message": "Gemini のタブが見つかりません。"
+		"message": "対応サイトのタブが見つかりません。"
 	},
 	"statusInjectFailed": {
 		"message": "コンテンツスクリプトの注入に失敗しました。"

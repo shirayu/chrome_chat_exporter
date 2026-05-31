@@ -12,6 +12,12 @@ const INCLUDE_THOUGHTS_STORAGE_KEY = "includeThoughts";
 const FILENAME_FORMAT_STORAGE_KEY = "filenameFormat";
 const DEFAULT_FILENAME_FORMAT = "{date}_{time}-{toolname}";
 
+const SUPPORTED_SITES = [
+	{ prefix: "https://gemini.google.com/", toolname: "gemini" },
+	{ prefix: "https://claude.ai/", toolname: "claude" },
+	{ prefix: "https://chatgpt.com/", toolname: "chatgpt" },
+];
+
 function applyI18n() {
 	document.querySelectorAll("[data-i18n]").forEach((el) => {
 		const key = el.getAttribute("data-i18n");
@@ -55,7 +61,7 @@ async function restoreMarkdownStyle() {
 			input.checked = true;
 		}
 	} catch (error) {
-		console.error("[Gemini Export] failed to restore markdown style", error);
+		console.error("[Chat Export] failed to restore markdown style", error);
 	}
 }
 
@@ -65,7 +71,7 @@ async function persistMarkdownStyle() {
 			[MARKDOWN_STYLE_STORAGE_KEY]: getMarkdownStyle(),
 		});
 	} catch (error) {
-		console.error("[Gemini Export] failed to save markdown style", error);
+		console.error("[Chat Export] failed to save markdown style", error);
 	}
 }
 
@@ -76,10 +82,7 @@ async function restoreAutoCloseSetting() {
 		if (typeof value !== "boolean") return;
 		autoCloseCheckbox.checked = value;
 	} catch (error) {
-		console.error(
-			"[Gemini Export] failed to restore auto close setting",
-			error,
-		);
+		console.error("[Chat Export] failed to restore auto close setting", error);
 	}
 }
 
@@ -91,7 +94,7 @@ async function restoreIncludeThoughtsSetting() {
 		includeThoughtsCheckbox.checked = value;
 	} catch (error) {
 		console.error(
-			"[Gemini Export] failed to restore include thoughts setting",
+			"[Chat Export] failed to restore include thoughts setting",
 			error,
 		);
 	}
@@ -106,7 +109,7 @@ async function restoreFilenameFormat() {
 				? value
 				: DEFAULT_FILENAME_FORMAT;
 	} catch (error) {
-		console.error("[Gemini Export] failed to restore filename format", error);
+		console.error("[Chat Export] failed to restore filename format", error);
 		filenameFormatInput.value = DEFAULT_FILENAME_FORMAT;
 	}
 }
@@ -118,7 +121,7 @@ async function persistFilenameFormat() {
 				filenameFormatInput.value || DEFAULT_FILENAME_FORMAT,
 		});
 	} catch (error) {
-		console.error("[Gemini Export] failed to save filename format", error);
+		console.error("[Chat Export] failed to save filename format", error);
 	}
 }
 
@@ -144,7 +147,7 @@ async function persistAutoCloseSetting() {
 			[AUTO_CLOSE_STORAGE_KEY]: autoCloseCheckbox.checked,
 		});
 	} catch (error) {
-		console.error("[Gemini Export] failed to save auto close setting", error);
+		console.error("[Chat Export] failed to save auto close setting", error);
 	}
 }
 
@@ -155,7 +158,7 @@ async function persistIncludeThoughtsSetting() {
 		});
 	} catch (error) {
 		console.error(
-			"[Gemini Export] failed to save include thoughts setting",
+			"[Chat Export] failed to save include thoughts setting",
 			error,
 		);
 	}
@@ -182,10 +185,10 @@ async function ensureContentScript(tabId) {
 			target: { tabId },
 			files: ["content.js"],
 		});
-		console.debug("[Gemini Export] content script injected");
+		console.debug("[Chat Export] content script injected");
 		return true;
 	} catch (error) {
-		console.error("[Gemini Export] content script inject failed", error);
+		console.error("[Chat Export] content script inject failed", error);
 		return false;
 	}
 }
@@ -205,7 +208,7 @@ async function requestExport(format, output) {
 			markdownStyle: getMarkdownStyle(),
 			includeThoughts: includeThoughtsCheckbox.checked,
 		};
-		console.debug("[Gemini Export] sendMessage payload", request);
+		console.debug("[Chat Export] sendMessage payload", request);
 
 		const injected = await ensureContentScript(tab.id);
 		if (!injected) {
@@ -214,11 +217,11 @@ async function requestExport(format, output) {
 		}
 
 		const response = await chrome.tabs.sendMessage(tab.id, request);
-		console.debug("[Gemini Export] response", response);
+		console.debug("[Chat Export] response", response);
 
 		if (!response?.ok) {
 			if (response?.error) {
-				console.error("[Gemini Export] content error", response.error);
+				console.error("[Chat Export] content error", response.error);
 			}
 			setStatus(chrome.i18n.getMessage("statusPageNotReady"), true);
 			return;
@@ -244,20 +247,15 @@ async function requestExport(format, output) {
 		const scope = getScope();
 		const scopeLabel =
 			scope === "current" ? "current" : scope === "select" ? "select" : "all";
-		const toolname = tab.url?.includes("gemini.google.com")
-			? "gemini"
-			: tab.url?.includes("claude.ai")
-				? "claude"
-				: tab.url?.includes("chatgpt.com")
-					? "chatgpt"
-					: "chat";
+		const matched = SUPPORTED_SITES.find((s) => tab.url?.startsWith(s.prefix));
+		const toolname = matched ? matched.toolname : "chat";
 		const filename = buildFilename(toolname, scopeLabel, extension);
 
 		await chrome.downloads.download({ url, filename, saveAs: true });
 		setStatus(chrome.i18n.getMessage("statusDownloadStarted"), false);
 		closePopupIfEnabled();
 	} catch (_error) {
-		console.error("[Gemini Export] export failed", _error);
+		console.error("[Chat Export] export failed", _error);
 		setStatus(chrome.i18n.getMessage("statusExportFailed"), true);
 	}
 }
@@ -286,7 +284,7 @@ async function loadTurnOptions(tabId) {
 			turnSelect.appendChild(option);
 		});
 	} catch (error) {
-		console.error("[Gemini Export] failed to load turn list", error);
+		console.error("[Chat Export] failed to load turn list", error);
 	}
 }
 
@@ -325,10 +323,7 @@ exportDownloadBtn.addEventListener("click", () =>
 
 function isSupportedTab(tab) {
 	if (!tab || typeof tab.url !== "string") return false;
-	return (
-		tab.url.startsWith("https://gemini.google.com/") ||
-		tab.url.startsWith("https://claude.ai/")
-	);
+	return SUPPORTED_SITES.some((s) => tab.url.startsWith(s.prefix));
 }
 
 Promise.all([

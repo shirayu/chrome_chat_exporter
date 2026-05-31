@@ -3,16 +3,16 @@
 		"message": "Chat Exporter"
 	},
 	"extDescription": {
-		"message": "Export Gemini conversations as HTML or Markdown."
+		"message": "Export AI chat conversations as HTML or Markdown."
 	},
 	"statusOpenGemini": {
-		"message": "Open this on a Gemini page."
+		"message": "Open this on a supported page (Gemini / Claude)."
 	},
 	"statusReady": {
 		"message": "Choose export options."
 	},
 	"statusNoTab": {
-		"message": "Gemini tab not found."
+		"message": "No supported site tab found."
 	},
 	"statusInjectFailed": {
 		"message": "Failed to inject content script."

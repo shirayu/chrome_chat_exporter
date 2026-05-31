@@ -7,6 +7,7 @@
 	function detectSite() {
 		const hostname = window.location?.hostname || "";
 		if (hostname.includes("claude.ai")) return "claude";
+		if (hostname.includes("chatgpt.com")) return "chatgpt";
 		return "gemini";
 	}
 
@@ -230,7 +231,7 @@
 	}
 
 	function pickConversations(scope, turnIndex) {
-		if (SITE === "claude") return [];
+		if (SITE !== "gemini") return [];
 		const nodes = Array.from(document.querySelectorAll(SELECTORS.conversation));
 		if (nodes.length === 0) return [];
 		if (scope === "current") return [nodes[nodes.length - 1]];
@@ -241,13 +242,19 @@
 		return nodes;
 	}
 
+	const SITE_LABELS = {
+		claude: "Claude",
+		chatgpt: "ChatGPT",
+		gemini: "Gemini",
+	};
+
 	function getModelLabel() {
-		return SITE === "claude" ? "Claude" : "Gemini";
+		return SITE_LABELS[SITE] ?? "Gemini";
 	}
 
 	function buildHtml(turns, includeThoughts) {
 		const modelLabel = getModelLabel();
-		const title = SITE === "claude" ? "Claude Export" : "Gemini Export";
+		const title = `${modelLabel} Export`;
 		const body = turns
 			.map((turn, index) => {
 				const userHtml = escapeHtml(turn.user).replace(/\n/g, "<br>");
@@ -425,7 +432,7 @@
 	}
 
 	async function extract(scope, turnIndex, markdownStyle, includeThoughts) {
-		if (SITE === "claude") {
+		if (SITE !== "gemini") {
 			return extractClaude(scope, turnIndex, markdownStyle, includeThoughts);
 		}
 
@@ -457,7 +464,7 @@
 	}
 
 	function buildTurnList() {
-		if (SITE === "claude") {
+		if (SITE !== "gemini") {
 			return buildClaudeTurns().map(({ userNode }, index) => {
 				const user = getVisibleText(userNode);
 				const hint = user ? user.slice(0, 20) : "(no text)";
