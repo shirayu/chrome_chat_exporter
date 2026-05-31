@@ -4,6 +4,14 @@
 	}
 	window.__geminiChatExporterInjected = true;
 
+	function detectSite() {
+		const hostname = window.location?.hostname || "";
+		if (hostname.includes("claude.ai")) return "claude";
+		return "gemini";
+	}
+
+	const SITE = detectSite();
+
 	const SELECTORS = {
 		conversation: ".conversation-container, .share-turn-viewer",
 		userText: ".user-query-container .query-text",
@@ -13,6 +21,12 @@
 			".response-content, .response-container-content, .message-content",
 		thoughtsContainer: ".thoughts-container",
 		thoughtsToggleButton: "[data-test-id='thoughts-header-button']",
+	};
+
+	const CLAUDE_SELECTORS = {
+		userMessage: "[data-testid='user-message']",
+		modelResponse: ".font-claude-response",
+		modelMarkdown: ".standard-markdown, .progressive-markdown",
 	};
 
 	const markdown = window.__geminiMarkdown || {};
@@ -200,7 +214,23 @@
 			.replace(/>/g, "&gt;");
 	}
 
+	function buildClaudeTurns() {
+		const userNodes = Array.from(
+			document.querySelectorAll(CLAUDE_SELECTORS.userMessage),
+		);
+		const responseNodes = Array.from(
+			document.querySelectorAll(
+				`[data-is-streaming] .font-claude-response, .font-claude-response`,
+			),
+		);
+		return userNodes.map((userNode, i) => ({
+			userNode,
+			responseNode: responseNodes[i] || null,
+		}));
+	}
+
 	function pickConversations(scope, turnIndex) {
+		if (SITE === "claude") return [];
 		const nodes = Array.from(document.querySelectorAll(SELECTORS.conversation));
 		if (nodes.length === 0) return [];
 		if (scope === "current") return [nodes[nodes.length - 1]];
@@ -211,7 +241,13 @@
 		return nodes;
 	}
 
+	function getModelLabel() {
+		return SITE === "claude" ? "Claude" : "Gemini";
+	}
+
 	function buildHtml(turns, includeThoughts) {
+		const modelLabel = getModelLabel();
+		const title = SITE === "claude" ? "Claude Export" : "Gemini Export";
 		const body = turns
 			.map((turn, index) => {
 				const userHtml = escapeHtml(turn.user).replace(/\n/g, "<br>");
@@ -243,7 +279,7 @@
 
 				parts.push(
 					`  <div class="role model">`,
-					`    <h3>Gemini</h3>`,
+					`    <h3>${modelLabel}</h3>`,
 					`    <div class="content">${modelHtml}</div>`,
 					`  </div>`,
 					`</section>`,
@@ -258,7 +294,7 @@
 			'<html lang="ja">',
 			"<head>",
 			'<meta charset="utf-8">',
-			"<title>Gemini Export</title>",
+			`<title>${title}</title>`,
 			"<style>",
 			"body{font-family:system-ui, -apple-system, sans-serif;line-height:1.6;margin:24px;background:#f8f9fb;color:#111;}",
 			".turn{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:16px;}",
@@ -277,7 +313,8 @@
 		].join("\n");
 	}
 
-	function buildGeminiStyleMarkdown(turns, includeThoughts) {
+	function buildTurnHeadingStyleMarkdown(turns, includeThoughts) {
+		const modelLabel = getModelLabel();
 		const lines = [];
 		turns.forEach((turn, index) => {
 			lines.push(
@@ -293,12 +330,13 @@
 				lines.push("", `### ${THOUGHTS_HEADING}`, "", turn.thoughts);
 			}
 
-			lines.push("", "### Gemini", "", turn.model || "");
+			lines.push("", `### ${modelLabel}`, "", turn.model || "");
 		});
 		return lines.join("\n");
 	}
 
 	function buildLegacyStyleMarkdown(turns, includeThoughts) {
+		const modelLabel = getModelLabel();
 		const lines = [];
 		turns.forEach((turn, index) => {
 			lines.push("", `## Turn ${index + 1}-1: User`, "", turn.user || "");
@@ -312,7 +350,12 @@
 				);
 			}
 
-			lines.push("", `## Turn ${index + 1}-2: Gemini`, "", turn.model || "");
+			lines.push(
+				"",
+				`## Turn ${index + 1}-2: ${modelLabel}`,
+				"",
+				turn.model || "",
+			);
 		});
 		return lines.join("\n");
 	}
@@ -321,10 +364,71 @@
 		if (markdownStyle === "legacy") {
 			return buildLegacyStyleMarkdown(turns, includeThoughts);
 		}
-		return buildGeminiStyleMarkdown(turns, includeThoughts);
+		return buildTurnHeadingStyleMarkdown(turns, includeThoughts);
+	}
+
+	async function extractClaude(
+		scope,
+		turnIndex,
+		markdownStyle,
+		includeThoughts,
+	) {
+		const allTurnPairs = buildClaudeTurns();
+		let pairs;
+		if (scope === "current") {
+			pairs =
+				allTurnPairs.length > 0 ? [allTurnPairs[allTurnPairs.length - 1]] : [];
+		} else if (scope === "select" && Number.isInteger(turnIndex)) {
+			const picked = allTurnPairs[turnIndex];
+			pairs = picked ? [picked] : [];
+		} else {
+			pairs = allTurnPairs;
+		}
+
+		const turns = pairs.map(({ userNode, responseNode }) => {
+			const userText = getVisibleText(userNode);
+			let modelText = "";
+			let modelHtmlStr = "";
+			if (responseNode) {
+				const markdownNodes = Array.from(
+					responseNode.querySelectorAll(CLAUDE_SELECTORS.modelMarkdown),
+				);
+				for (const node of markdownNodes) {
+					const text = markdown.extractMarkdownFromNode(node);
+					if (text?.trim()) {
+						modelText = cleanText(text);
+						modelHtmlStr = node.innerHTML.trim();
+						break;
+					}
+				}
+				if (!modelText) {
+					modelText = cleanText(
+						responseNode.innerText || responseNode.textContent || "",
+					);
+					modelHtmlStr = responseNode.innerHTML.trim();
+				}
+			}
+			return {
+				user: userText,
+				thoughts: "",
+				thoughtsHtml: "",
+				model: modelText,
+				modelHtml: modelHtmlStr,
+			};
+		});
+
+		return {
+			turns,
+			html: buildHtml(turns, includeThoughts),
+			markdown: buildMarkdown(turns, markdownStyle, includeThoughts),
+		};
 	}
 
 	async function extract(scope, turnIndex, markdownStyle, includeThoughts) {
+		if (SITE === "claude") {
+			return extractClaude(scope, turnIndex, markdownStyle, includeThoughts);
+		}
+
 		const containers = pickConversations(scope, turnIndex);
 		const turns = [];
 
@@ -353,6 +457,13 @@
 	}
 
 	function buildTurnList() {
+		if (SITE === "claude") {
+			return buildClaudeTurns().map(({ userNode }, index) => {
+				const user = getVisibleText(userNode);
+				const hint = user ? user.slice(0, 20) : "(no text)";
+				return { index, label: `${index + 1}. ${hint}` };
+			});
+		}
 		const nodes = Array.from(document.querySelectorAll(SELECTORS.conversation));
 		return nodes.map((container, index) => {
 			const user = getUserText(container);

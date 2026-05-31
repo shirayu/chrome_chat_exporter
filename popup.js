@@ -323,6 +323,14 @@ exportDownloadBtn.addEventListener("click", () =>
 	requestExport(getFormat(), "download"),
 );
 
+function isSupportedTab(tab) {
+	if (!tab || typeof tab.url !== "string") return false;
+	return (
+		tab.url.startsWith("https://gemini.google.com/") ||
+		tab.url.startsWith("https://claude.ai/")
+	);
+}
+
 Promise.all([
 	restoreMarkdownStyle(),
 	restoreAutoCloseSetting(),
@@ -331,11 +339,7 @@ Promise.all([
 	getActiveTab(),
 ]).then(([, , , , tab]) => {
 	applyI18n();
-	if (
-		tab &&
-		typeof tab.url === "string" &&
-		tab.url.startsWith("https://gemini.google.com/")
-	) {
+	if (isSupportedTab(tab)) {
 		setStatus(chrome.i18n.getMessage("statusReady"), false);
 		loadTurnOptions(tab.id);
 	} else {
