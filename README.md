@@ -6,10 +6,10 @@ Chrome extension that exports chat conversations as HTML or Markdown.
 
 ## Usage
 
-The current supported website is **Gemini**.
+The current supported websites are **Gemini**, **Claude**, and **ChatGPT**.
 
 1. Open Chrome Extensions and choose "Load unpacked", then select this folder.
-2. Open `https://gemini.google.com/` and a chat thread.
+2. Open a chat thread on `https://gemini.google.com/`, `https://claude.ai/`, or `https://chatgpt.com/`.
 3. Click the extension icon, choose the scope and output, then click Export.
 
 ## Options
@@ -32,4 +32,4 @@ The current supported website is **Gemini**.
 ## Notes
 
 - Images and file attachments are not included.
-- If Gemini changes its DOM structure, extraction may break.
+- If a supported site changes its DOM structure, extraction may break.

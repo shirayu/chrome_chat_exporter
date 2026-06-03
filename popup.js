@@ -1,8 +1,10 @@
 const statusEl = document.getElementById("status");
 const exportClipboardBtn = document.getElementById("export-clipboard");
 const exportDownloadBtn = document.getElementById("export-download");
+const progressEl = document.getElementById("progress");
 const turnSelectRow = document.getElementById("turn-select-row");
 const turnSelect = document.getElementById("turn-select");
+const scopeNoteEl = document.getElementById("scope-note");
 const autoCloseCheckbox = document.getElementById("auto-close");
 const includeThoughtsCheckbox = document.getElementById("include-thoughts");
 const filenameFormatInput = document.getElementById("filename-format");
@@ -17,6 +19,9 @@ const SUPPORTED_SITES = [
 	{ prefix: "https://claude.ai/", toolname: "claude" },
 	{ prefix: "https://chatgpt.com/", toolname: "chatgpt" },
 ];
+
+let activeTab = null;
+let turnOptionsLoadedWithScroll = false;
 
 function applyI18n() {
 	document.querySelectorAll("[data-i18n]").forEach((el) => {
@@ -179,11 +184,50 @@ function setStatus(text, isWarn = false) {
 	statusEl.classList.toggle("warn", isWarn);
 }
 
+function setExportBusy(isBusy) {
+	exportClipboardBtn.disabled = isBusy;
+	exportDownloadBtn.disabled = isBusy;
+	progressEl.hidden = !isBusy;
+	document.querySelectorAll("input, select").forEach((control) => {
+		control.disabled = isBusy;
+	});
+}
+
+function getCollectingStatus(tab, scope) {
+	if ((scope === "all" || scope === "select") && isChatGptTab(tab)) {
+		return chrome.i18n.getMessage("statusCollectingChatGpt");
+	}
+	return chrome.i18n.getMessage("statusExporting");
+}
+
+function isChatGptTab(tab) {
+	return tab?.url?.startsWith("https://chatgpt.com/");
+}
+
+function updateScopeNote() {
+	if (!isChatGptTab(activeTab)) {
+		scopeNoteEl.textContent = "";
+		return;
+	}
+	const scope = getScope();
+	if (scope === "all") {
+		scopeNoteEl.textContent = chrome.i18n.getMessage("scopeChatGptScrollNote");
+		return;
+	}
+	if (scope === "select") {
+		scopeNoteEl.textContent = chrome.i18n.getMessage(
+			"scopeSelectChatGptScrollNote",
+		);
+		return;
+	}
+	scopeNoteEl.textContent = "";
+}
+
 async function ensureContentScript(tabId) {
 	try {
 		await chrome.scripting.executeScript({
 			target: { tabId },
-			files: ["content.js"],
+			files: ["markdown.js", "content.js"],
 		});
 		console.debug("[Chat Export] content script injected");
 		return true;
@@ -194,6 +238,7 @@ async function ensureContentScript(tabId) {
 }
 
 async function requestExport(format, output) {
+	setExportBusy(true);
 	try {
 		const tab = await getActiveTab();
 		if (!tab?.id) {
@@ -209,6 +254,7 @@ async function requestExport(format, output) {
 			includeThoughts: includeThoughtsCheckbox.checked,
 		};
 		console.debug("[Chat Export] sendMessage payload", request);
+		setStatus(getCollectingStatus(tab, request.scope), false);
 
 		const injected = await ensureContentScript(tab.id);
 		if (!injected) {
@@ -257,17 +303,28 @@ async function requestExport(format, output) {
 	} catch (_error) {
 		console.error("[Chat Export] export failed", _error);
 		setStatus(chrome.i18n.getMessage("statusExportFailed"), true);
+	} finally {
+		setExportBusy(false);
 	}
 }
 
-async function loadTurnOptions(tabId) {
+async function loadTurnOptions(tabId, { scroll = false } = {}) {
 	try {
+		if (scroll) {
+			setExportBusy(true);
+			setStatus(chrome.i18n.getMessage("statusCollectingChatGpt"), false);
+		}
 		const injected = await ensureContentScript(tabId);
 		if (!injected) return;
 		const response = await chrome.tabs.sendMessage(tabId, {
 			type: "LIST_GEMINI_TURNS",
+			scroll,
 		});
 		if (!response?.ok) return;
+		if (scroll) {
+			turnOptionsLoadedWithScroll = true;
+			setStatus(chrome.i18n.getMessage("statusReady"), false);
+		}
 		const turns = response.data.turns || [];
 		turnSelect.innerHTML = "";
 		if (turns.length === 0) {
@@ -285,12 +342,25 @@ async function loadTurnOptions(tabId) {
 		});
 	} catch (error) {
 		console.error("[Chat Export] failed to load turn list", error);
+	} finally {
+		if (scroll) {
+			setExportBusy(false);
+		}
 	}
 }
 
 function toggleTurnSelect() {
 	const scope = getScope();
 	turnSelectRow.hidden = scope !== "select";
+	updateScopeNote();
+	if (
+		scope === "select" &&
+		isChatGptTab(activeTab) &&
+		!turnOptionsLoadedWithScroll &&
+		activeTab?.id
+	) {
+		loadTurnOptions(activeTab.id, { scroll: true });
+	}
 }
 
 document.querySelectorAll("input[name=scope]").forEach((radio) => {
@@ -334,6 +404,7 @@ Promise.all([
 	getActiveTab(),
 ]).then(([, , , , tab]) => {
 	applyI18n();
+	activeTab = tab;
 	if (isSupportedTab(tab)) {
 		setStatus(chrome.i18n.getMessage("statusReady"), false);
 		loadTurnOptions(tab.id);

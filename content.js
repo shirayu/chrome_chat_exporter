@@ -30,6 +30,14 @@
 		modelMarkdown: ".standard-markdown, .progressive-markdown",
 	};
 
+	const CHATGPT_SELECTORS = {
+		scrollRoot: "[data-scroll-root]",
+		turn: "[data-turn]",
+		userMessage: '[data-message-author-role="user"]',
+		assistantMessage: '[data-message-author-role="assistant"]',
+		modelMarkdown: ".markdown",
+	};
+
 	const markdown = window.__geminiMarkdown || {};
 	const THOUGHTS_HEADING = "Thought Process";
 
@@ -230,6 +238,188 @@
 		}));
 	}
 
+	function getChatGptTurnIndex(turnNode) {
+		const testId = turnNode.getAttribute("data-testid") || "";
+		const match = testId.match(/^conversation-turn-(\d+)$/);
+		if (match) return Number.parseInt(match[1], 10);
+
+		const id =
+			turnNode.getAttribute("data-turn-id-container") ||
+			turnNode.getAttribute("data-turn-id") ||
+			"";
+		if (!id) return null;
+		let hash = 0;
+		for (let i = 0; i < id.length; i += 1) {
+			hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+		}
+		return hash;
+	}
+
+	function extractChatGptModel(responseNode) {
+		let modelText = "";
+		let modelHtmlStr = "";
+		if (responseNode) {
+			const markdownNode = responseNode.querySelector(
+				CHATGPT_SELECTORS.modelMarkdown,
+			);
+			if (markdownNode) {
+				modelText = cleanText(markdown.extractMarkdownFromNode(markdownNode));
+				modelHtmlStr = markdownNode.innerHTML.trim();
+			}
+			if (!modelText) {
+				modelText = getVisibleText(responseNode);
+				modelHtmlStr = responseNode.innerHTML.trim();
+			}
+		}
+		return { modelText, modelHtmlStr };
+	}
+
+	function captureChatGptVisibleTurns(records) {
+		const turnNodes = Array.from(
+			document.querySelectorAll(CHATGPT_SELECTORS.turn),
+		);
+
+		for (const turnNode of turnNodes) {
+			const index = getChatGptTurnIndex(turnNode);
+			if (!Number.isInteger(index)) continue;
+
+			const role = turnNode.getAttribute("data-turn");
+			const record = records.get(index) || { index };
+			if (role === "user") {
+				const userNode =
+					turnNode.querySelector(CHATGPT_SELECTORS.userMessage) || turnNode;
+				const userText = getVisibleText(userNode);
+				if (userText) {
+					record.role = "user";
+					record.user = userText;
+				}
+			} else if (role === "assistant") {
+				const responseNode =
+					turnNode.querySelector(CHATGPT_SELECTORS.assistantMessage) ||
+					turnNode;
+				const { modelText, modelHtmlStr } = extractChatGptModel(responseNode);
+				if (modelText || modelHtmlStr) {
+					record.role = "assistant";
+					record.model = modelText;
+					record.modelHtml = modelHtmlStr;
+				}
+			}
+			if (record.role) {
+				records.set(index, record);
+			}
+		}
+	}
+
+	function buildChatGptTurnRecords(records = new Map()) {
+		captureChatGptVisibleTurns(records);
+
+		const ordered = Array.from(records.values()).sort(
+			(a, b) => a.index - b.index,
+		);
+		const turns = [];
+		let pendingUser = null;
+
+		for (const record of ordered) {
+			if (record.role === "user") {
+				pendingUser = record.user ? record : null;
+				continue;
+			}
+			if (record.role !== "assistant" || !pendingUser) {
+				continue;
+			}
+			if (!record.model && !record.modelHtml) {
+				continue;
+			}
+			turns.push({
+				user: pendingUser.user,
+				thoughts: "",
+				thoughtsHtml: "",
+				model: record.model || "",
+				modelHtml: record.modelHtml || "",
+			});
+			pendingUser = null;
+		}
+
+		return turns;
+	}
+
+	function getChatGptScrollRoot() {
+		const roots = Array.from(
+			document.querySelectorAll(CHATGPT_SELECTORS.scrollRoot),
+		);
+		if (roots.length > 0) return roots[0];
+		return document.scrollingElement || document.documentElement || null;
+	}
+
+	function getScrollTop(root) {
+		return Number.isFinite(root?.scrollTop) ? root.scrollTop : 0;
+	}
+
+	function getScrollHeight(root) {
+		return Number.isFinite(root?.scrollHeight) ? root.scrollHeight : 0;
+	}
+
+	function getClientHeight(root) {
+		return Number.isFinite(root?.clientHeight) ? root.clientHeight : 0;
+	}
+
+	function setScrollTop(root, top) {
+		if (!root) return;
+		if (typeof root.scrollTo === "function") {
+			root.scrollTo({ top, behavior: "instant" });
+			return;
+		}
+		if ("scrollTop" in root) {
+			root.scrollTop = top;
+		}
+	}
+
+	async function collectChatGptTurnRecords({ scroll = true } = {}) {
+		const records = new Map();
+		captureChatGptVisibleTurns(records);
+
+		const scrollRoot = getChatGptScrollRoot();
+		const scrollHeight = getScrollHeight(scrollRoot);
+		const clientHeight = getClientHeight(scrollRoot);
+		if (
+			!scroll ||
+			!scrollRoot ||
+			scrollHeight <= clientHeight ||
+			clientHeight <= 0
+		) {
+			return buildChatGptTurnRecords(records);
+		}
+
+		const originalTop = getScrollTop(scrollRoot);
+		const step = Math.max(320, Math.floor(clientHeight * 0.8));
+		try {
+			setScrollTop(scrollRoot, 0);
+			await sleep(120);
+			captureChatGptVisibleTurns(records);
+
+			let previousTop = -1;
+			for (let i = 0; i < 120; i += 1) {
+				const currentTop = getScrollTop(scrollRoot);
+				if (currentTop === previousTop) break;
+				previousTop = currentTop;
+				const nextTop = Math.min(
+					currentTop + step,
+					getScrollHeight(scrollRoot) - getClientHeight(scrollRoot),
+				);
+				setScrollTop(scrollRoot, nextTop);
+				await sleep(120);
+				captureChatGptVisibleTurns(records);
+				if (nextTop <= currentTop || nextTop >= getScrollHeight(scrollRoot)) {
+					break;
+				}
+			}
+		} finally {
+			setScrollTop(scrollRoot, originalTop);
+		}
+
+		return buildChatGptTurnRecords(records);
+	}
+
 	function pickConversations(scope, turnIndex) {
 		if (SITE !== "gemini") return [];
 		const nodes = Array.from(document.querySelectorAll(SELECTORS.conversation));
@@ -339,7 +529,7 @@
 
 			lines.push("", `### ${modelLabel}`, "", turn.model || "");
 		});
-		return lines.join("\n");
+		return lines.join("\n").trim();
 	}
 
 	function buildLegacyStyleMarkdown(turns, includeThoughts) {
@@ -364,7 +554,7 @@
 				turn.model || "",
 			);
 		});
-		return lines.join("\n");
+		return lines.join("\n").trim();
 	}
 
 	function buildMarkdown(turns, markdownStyle, includeThoughts) {
@@ -431,9 +621,38 @@
 		};
 	}
 
+	async function extractChatGpt(
+		scope,
+		turnIndex,
+		markdownStyle,
+		includeThoughts,
+	) {
+		const allTurns = await collectChatGptTurnRecords({
+			scroll: scope === "all" || scope === "select",
+		});
+		let turns;
+		if (scope === "current") {
+			turns = allTurns.length > 0 ? [allTurns[allTurns.length - 1]] : [];
+		} else if (scope === "select" && Number.isInteger(turnIndex)) {
+			const picked = allTurns[turnIndex];
+			turns = picked ? [picked] : [];
+		} else {
+			turns = allTurns;
+		}
+
+		return {
+			turns,
+			html: buildHtml(turns, includeThoughts),
+			markdown: buildMarkdown(turns, markdownStyle, includeThoughts),
+		};
+	}
+
 	async function extract(scope, turnIndex, markdownStyle, includeThoughts) {
-		if (SITE !== "gemini") {
+		if (SITE === "claude") {
 			return extractClaude(scope, turnIndex, markdownStyle, includeThoughts);
+		}
+		if (SITE === "chatgpt") {
+			return extractChatGpt(scope, turnIndex, markdownStyle, includeThoughts);
 		}
 
 		const containers = pickConversations(scope, turnIndex);
@@ -463,10 +682,18 @@
 		};
 	}
 
-	function buildTurnList() {
-		if (SITE !== "gemini") {
+	async function buildTurnList({ scroll = false } = {}) {
+		if (SITE === "claude") {
 			return buildClaudeTurns().map(({ userNode }, index) => {
 				const user = getVisibleText(userNode);
+				const hint = user ? user.slice(0, 20) : "(no text)";
+				return { index, label: `${index + 1}. ${hint}` };
+			});
+		}
+		if (SITE === "chatgpt") {
+			const turns = await collectChatGptTurnRecords({ scroll });
+			return turns.map((turn, index) => {
+				const user = turn.user;
 				const hint = user ? user.slice(0, 20) : "(no text)";
 				return { index, label: `${index + 1}. ${hint}` };
 			});
@@ -506,8 +733,13 @@
 		}
 		try {
 			if (message.type === "LIST_GEMINI_TURNS") {
-				const turns = buildTurnList();
-				sendResponse({ ok: true, data: { turns } });
+				buildTurnList({ scroll: message.scroll === true })
+					.then((turns) => {
+						sendResponse({ ok: true, data: { turns } });
+					})
+					.catch((error) => {
+						sendResponse({ ok: false, error: String(error) });
+					});
 				return true;
 			}
 		} catch (error) {

@@ -96,6 +96,13 @@
       .select-row {
         margin-top: 8px;
       }
+      .scope-note {
+        color: #334155;
+        font-size: 11px;
+        line-height: 1.4;
+        margin-top: 8px;
+        overflow-wrap: anywhere;
+      }
       select {
         width: 100%;
         border-radius: 10px;
@@ -136,6 +143,16 @@
       button:active {
         transform: translateY(1px);
       }
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+        transform: none;
+      }
+      input:disabled,
+      select:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
       .primary {
         background: linear-gradient(135deg, #2563eb 0%, #38bdf8 100%);
         color: #fff;
@@ -157,6 +174,31 @@
         min-height: 16px;
         line-height: 1.4;
         overflow-wrap: anywhere;
+      }
+      .progress {
+        background: rgba(148, 163, 184, 0.25);
+        border-radius: 999px;
+        height: 4px;
+        margin-top: 8px;
+        overflow: hidden;
+      }
+      .progress[hidden] {
+        display: none;
+      }
+      .progress-bar {
+        animation: progress-slide 1s ease-in-out infinite;
+        background: linear-gradient(90deg, #2563eb, #38bdf8);
+        border-radius: inherit;
+        height: 100%;
+        width: 45%;
+      }
+      @keyframes progress-slide {
+        0% {
+          transform: translateX(-110%);
+        }
+        100% {
+          transform: translateX(230%);
+        }
       }
       .setting-row {
         margin-top: 10px;
@@ -200,6 +242,9 @@
       <div class="status" id="status" data-i18n="statusOpenGemini">
         対応ページで開いてください（Gemini / Claude）。
       </div>
+      <div class="progress" id="progress" hidden aria-hidden="true">
+        <div class="progress-bar"></div>
+      </div>
     </div>
     <div class="groups">
       <div class="section scope">
@@ -226,6 +271,7 @@
         <div class="select-row" id="turn-select-row" hidden>
           <select id="turn-select"></select>
         </div>
+        <div class="scope-note" id="scope-note"></div>
       </div>
       <div class="section format">
         <div class="option-group">

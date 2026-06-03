@@ -6,7 +6,7 @@
 		"message": "Export AI chat conversations as HTML or Markdown."
 	},
 	"statusOpenGemini": {
-		"message": "Open this on a supported page (Gemini / Claude)."
+		"message": "Open this on a supported page (Gemini / Claude / ChatGPT)."
 	},
 	"statusReady": {
 		"message": "Choose export options."
@@ -19,6 +19,12 @@
 	},
 	"statusPageNotReady": {
 		"message": "Page not ready or unsupported."
+	},
+	"statusExporting": {
+		"message": "Collecting conversation..."
+	},
+	"statusCollectingChatGpt": {
+		"message": "Collecting ChatGPT turns while auto-scrolling the page. Do not interact with the page until it finishes."
 	},
 	"statusCopied": {
 		"message": "Copied to clipboard."
@@ -37,6 +43,12 @@
 	},
 	"scopeSelect": {
 		"message": "Select"
+	},
+	"scopeChatGptScrollNote": {
+		"message": "All ChatGPT export auto-scrolls the page to collect turns that are not currently loaded."
+	},
+	"scopeSelectChatGptScrollNote": {
+		"message": "ChatGPT Select auto-scrolls the page to build the complete turn list."
 	},
 	"outputClipboard": {
 		"message": "Clipboard"

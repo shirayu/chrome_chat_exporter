@@ -6,7 +6,7 @@
 		"message": "AI チャットの会話を HTML / Markdown でエクスポートします。"
 	},
 	"statusOpenGemini": {
-		"message": "対応ページで開いてください（Gemini / Claude）。"
+		"message": "対応ページで開いてください（Gemini / Claude / ChatGPT）。"
 	},
 	"statusReady": {
 		"message": "エクスポート形式を選んでください。"
@@ -19,6 +19,12 @@
 	},
 	"statusPageNotReady": {
 		"message": "ページの読み込みが完了していないか、対応外のページです。"
+	},
+	"statusExporting": {
+		"message": "会話を収集しています..."
+	},
+	"statusCollectingChatGpt": {
+		"message": "ChatGPT の会話を自動スクロールしながら収集しています。完了までページを操作しないでください。"
 	},
 	"statusCopied": {
 		"message": "クリップボードにコピーしました。"
@@ -37,6 +43,12 @@
 	},
 	"scopeSelect": {
 		"message": "会話を指定"
+	},
+	"scopeChatGptScrollNote": {
+		"message": "ChatGPT の全会話エクスポートでは、未読み込みの会話を取得するためページを自動スクロールします。"
+	},
+	"scopeSelectChatGptScrollNote": {
+		"message": "ChatGPT の会話指定では、選択肢を作るためページを自動スクロールして会話一覧を収集します。"
 	},
 	"outputClipboard": {
 		"message": "クリップボード"

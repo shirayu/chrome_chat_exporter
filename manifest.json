@@ -4,7 +4,11 @@
 	"version": "0.1.0",
 	"description": "__MSG_extDescription__",
 	"permissions": ["activeTab", "downloads", "scripting", "storage"],
-	"host_permissions": ["https://gemini.google.com/*", "https://claude.ai/*"],
+	"host_permissions": [
+		"https://gemini.google.com/*",
+		"https://claude.ai/*",
+		"https://chatgpt.com/*"
+	],
 	"default_locale": "ja",
 	"action": {
 		"default_title": "__MSG_extName__",
@@ -12,7 +16,11 @@
 	},
 	"content_scripts": [
 		{
-			"matches": ["https://gemini.google.com/*", "https://claude.ai/*"],
+			"matches": [
+				"https://gemini.google.com/*",
+				"https://claude.ai/*",
+				"https://chatgpt.com/*"
+			],
 			"js": ["markdown.js", "content.js"],
 			"run_at": "document_idle"
 		}
