@@ -464,21 +464,46 @@
 
 		function renderListItem(node, context, ordered, index) {
 			const marker = ordered ? `${index + 1}. ` : "- ";
-			const raw = Array.from(node.childNodes)
-				.map((child) =>
-					renderInline(child, {
-						...context,
-						inList: true,
-						inlineBreak: "newline",
-					}),
-				)
-				.join("")
-				.trim();
-			const linesInItem = raw.split("\n").filter((line) => line.length > 0);
-			if (linesInItem.length === 0) return `${marker}`.trimEnd();
-			const [first, ...rest] = linesInItem;
 			const indent = " ".repeat(marker.length);
-			return [marker + first, ...rest.map((line) => indent + line)].join("\n");
+
+			const inlineCtx = { ...context, inList: true, inlineBreak: "newline" };
+			const inlineParts = [];
+			const nestedLines = [];
+
+			Array.from(node.childNodes).forEach((child) => {
+				const tag = child.tagName?.toLowerCase();
+				if (tag === "ul" || tag === "ol") {
+					const nestedOrdered = tag === "ol";
+					const nestedItems = Array.from(child.children).filter(
+						(c) => c.tagName?.toLowerCase() === "li",
+					);
+					nestedItems.forEach((item, i) => {
+						const nested = renderListItem(item, context, nestedOrdered, i);
+						for (const line of nested.split("\n")) {
+							nestedLines.push(indent + line);
+						}
+					});
+				} else {
+					const text = renderInline(child, inlineCtx);
+					if (text) inlineParts.push(text);
+				}
+			});
+
+			const inlineText = inlineParts.join("").trim();
+			if (!inlineText && nestedLines.length === 0) return `${marker}`.trimEnd();
+
+			const resultLines = [];
+			if (inlineText) {
+				inlineText.split("\n").forEach((line, i) => {
+					resultLines.push(i === 0 ? marker + line : indent + line);
+				});
+			} else {
+				resultLines.push(`${marker}`.trimEnd());
+			}
+			for (const line of nestedLines) {
+				resultLines.push(line);
+			}
+			return resultLines.join("\n");
 		}
 
 		const rootResult = renderNode(root, { inPre: false, inList: false });

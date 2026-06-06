@@ -212,11 +212,118 @@ test("p containing block-level div renders each block separately", () => {
 });
 
 test("display:none elements are excluded from output", () => {
-	// style="display:none" の要素はエクスポート対象外
 	const tree = element("div", {}, [
 		element("p", {}, [text("表示テキスト")]),
 		element("span", { style: "display: none;" }, [text("非表示テキスト")]),
 	]);
 	const md = htmlToMarkdown(tree);
 	assert.equal(md, "表示テキスト");
+});
+
+test("display:none inside inline context is excluded", () => {
+	const tree = element("div", {}, [
+		element("p", {}, [
+			text("前 "),
+			element("span", { style: "display: none;" }, [text("非表示")]),
+			text(" 後"),
+		]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "前  後");
+});
+
+test("inline code is wrapped in backticks", () => {
+	const tree = element("div", {}, [
+		element("p", {}, [
+			text("実行: "),
+			element("code", {}, [text("npm install")]),
+		]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "実行: `npm install`");
+});
+
+test("fenced code block from pre element", () => {
+	const tree = element("div", {}, [
+		element("pre", {}, [
+			element("code", {}, [text("function hello() {\n  return 42;\n}")]),
+		]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "```\nfunction hello() {\n  return 42;\n}\n```");
+});
+
+test("italic text", () => {
+	const tree = element("div", {}, [
+		element("p", {}, [
+			text("これは "),
+			element("em", {}, [text("強調")]),
+			text(" です"),
+		]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "これは *強調* です");
+});
+
+test("link in paragraph", () => {
+	const tree = element("div", {}, [
+		element("p", {}, [
+			text("詳細は "),
+			element("a", { href: "https://example.com" }, [text("こちら")]),
+			text(" を参照"),
+		]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "詳細は [こちら](https://example.com) を参照");
+});
+
+test("link with no text falls back to href", () => {
+	const tree = element("div", {}, [
+		element("p", {}, [element("a", { href: "https://example.com" }, [])]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "[https://example.com](https://example.com)");
+});
+
+test("anchor with no href renders as plain text", () => {
+	const tree = element("div", {}, [
+		element("p", {}, [element("a", {}, [text("リンクなし")])]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "リンクなし");
+});
+
+test("image renders as markdown image syntax", () => {
+	const tree = element("div", {}, [
+		element("img", { src: "https://example.com/img.png", alt: "説明" }, []),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "![説明](https://example.com/img.png)");
+});
+
+test("blockquote with nested block elements", () => {
+	const tree = element("div", {}, [
+		element("blockquote", {}, [
+			element("p", {}, [text("一行目")]),
+			element("p", {}, [text("二行目")]),
+		]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "> 一行目\n>\n> 二行目");
+});
+
+test("nested unordered list", () => {
+	const tree = element("div", {}, [
+		element("ul", {}, [
+			element("li", {}, [
+				text("親"),
+				element("ul", {}, [
+					element("li", {}, [text("子1")]),
+					element("li", {}, [text("子2")]),
+				]),
+			]),
+		]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "- 親\n  - 子1\n  - 子2");
 });
