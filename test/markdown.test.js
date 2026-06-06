@@ -211,6 +211,14 @@ test("p containing block-level div renders each block separately", () => {
 	);
 });
 
+test("hide-from-message-actions attribute does not suppress text", () => {
+	const tree = element("div", {}, [
+		element("div", { "hide-from-message-actions": "" }, [text("表示テキスト")]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "表示テキスト");
+});
+
 test("display:none elements are excluded from output", () => {
 	const tree = element("div", {}, [
 		element("p", {}, [text("表示テキスト")]),
