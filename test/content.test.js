@@ -237,20 +237,14 @@ test("sequence UI export excludes hidden labels and separates each event", async
 	assert.ok(response?.ok, "export should succeed");
 	const md = response.data.markdown;
 
-	// only-show-to-message-actions のエクスポートヘッダーが混入しないこと
+	// only-show-to-message-actions のエクスポートヘッダー（display:none）が混入しないこと
 	assert.ok(!md.includes("1.ステップA:"), "export header should not appear");
 	assert.ok(!md.includes("2.ステップB:"), "export header should not appear");
 	assert.ok(!md.includes("3.ステップC:"), "export header should not appear");
 
-	// hide-from-message-actions のタイトルが単独見出しとして混入しないこと
-	assert.ok(
-		!md.includes("\nステップA\n"),
-		"sequence title should not appear as standalone line",
-	);
-	assert.ok(
-		!md.includes("最初にやること"),
-		"sequence subtitle should not appear",
-	);
+	// タイトル・サブタイトルが含まれること（画面に表示されるテキストは失われない）
+	assert.ok(md.includes("ステップA"), "sequence title should appear");
+	assert.ok(md.includes("最初にやること"), "sequence subtitle should appear");
 
 	// 各イベントの本文が独立して含まれること
 	assert.ok(md.includes("ステップAの本文です。"), "event A body should appear");

@@ -37,9 +37,6 @@
 
 		const isMessageActionElement = (element) => {
 			if (element.tagName?.toLowerCase() === "button") return true;
-			if (element.getAttribute?.("hide-from-message-actions") !== null) {
-				return true;
-			}
 			return hasClass(element, "table-footer");
 		};
 
