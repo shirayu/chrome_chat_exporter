@@ -139,12 +139,43 @@
 			lines.push(text);
 		}
 
+		const BLOCK_TAGS = new Set([
+			"div",
+			"p",
+			"ul",
+			"ol",
+			"pre",
+			"blockquote",
+			"h1",
+			"h2",
+			"h3",
+			"h4",
+			"h5",
+			"h6",
+			"table",
+			"hr",
+		]);
+
+		function isHidden(node) {
+			const style = node.getAttribute?.("style") || "";
+			return /display\s*:\s*none/.test(style);
+		}
+
+		function hasBlockChild(node) {
+			return Array.from(node.childNodes).some(
+				(child) =>
+					child.nodeType === NODE_ELEMENT &&
+					BLOCK_TAGS.has(child.tagName.toLowerCase()),
+			);
+		}
+
 		function renderNode(node, context) {
 			if (!node) return "";
 			if (node.nodeType === NODE_TEXT) {
 				return escapeMarkdownText(textFrom(node), context);
 			}
 			if (node.nodeType !== NODE_ELEMENT) return "";
+			if (isHidden(node)) return "";
 
 			const tag = node.tagName.toLowerCase();
 			const rawValue = node.getAttribute("data-md-raw");
@@ -158,6 +189,16 @@
 				case "br":
 					return "\n";
 				case "p": {
+					if (hasBlockChild(node)) {
+						const before = lines.length;
+						Array.from(node.childNodes).forEach((child) => {
+							const rendered = renderNode(child, context);
+							if (rendered) appendLine(rendered);
+							if (lines.length > before) appendBlankLine();
+						});
+						return "";
+					}
+
 					const rawText = node.textContent || "";
 					const allowMarkdown = /(\*\*|__|~~|`)/.test(rawText);
 
@@ -321,6 +362,7 @@
 			if (node.nodeType === NODE_TEXT) {
 				return escapeMarkdownText(textFrom(node), context);
 			}
+			if (node.nodeType === NODE_ELEMENT && isHidden(node)) return "";
 			if (node.nodeType !== NODE_ELEMENT) return "";
 
 			const tag = node.tagName.toLowerCase();

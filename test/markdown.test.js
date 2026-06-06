@@ -193,3 +193,30 @@ test("raw math block is preserved", () => {
 	const md = htmlToMarkdown(tree);
 	assert.equal(md, "$$\\nE=mc^2\\n$$");
 });
+
+test("p containing block-level div renders each block separately", () => {
+	// <p> が div などブロック要素を子に持つ場合（無効なHTMLだがブラウザは許容する）
+	// 各ブロックが独立した段落として出力されること
+	const tree = element("div", {}, [
+		element("p", {}, [
+			element("div", {}, [text("アイテム1の本文です。")]),
+			element("div", {}, [text("アイテム2の本文です。")]),
+			element("div", {}, [text("アイテム3の本文です。")]),
+		]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(
+		md,
+		"アイテム1の本文です。\n\nアイテム2の本文です。\n\nアイテム3の本文です。",
+	);
+});
+
+test("display:none elements are excluded from output", () => {
+	// style="display:none" の要素はエクスポート対象外
+	const tree = element("div", {}, [
+		element("p", {}, [text("表示テキスト")]),
+		element("span", { style: "display: none;" }, [text("非表示テキスト")]),
+	]);
+	const md = htmlToMarkdown(tree);
+	assert.equal(md, "表示テキスト");
+});

@@ -139,7 +139,7 @@ test("thoughts are included by default and can be disabled", async () => {
 	assert.ok(defaultResponse?.ok, "default export should succeed");
 	assert.equal(
 		defaultResponse.data.turns[0].thoughts,
-		"まず要件を整理します。次に出力形式を分けて考えます。",
+		"まず要件を整理します。\n\n次に出力形式を分けて考えます。",
 	);
 	assert.ok(
 		defaultResponse.data.markdown.includes("### Thought Process"),
@@ -164,7 +164,7 @@ test("thoughts are included by default and can be disabled", async () => {
 	assert.ok(hiddenResponse?.ok, "thoughts-disabled export should succeed");
 	assert.equal(
 		hiddenResponse.data.turns[0].thoughts,
-		"まず要件を整理します。次に出力形式を分けて考えます。",
+		"まず要件を整理します。\n\n次に出力形式を分けて考えます。",
 	);
 	assert.ok(
 		!hiddenResponse.data.markdown.includes("### Thought Process"),
@@ -219,6 +219,53 @@ test("collapsed thoughts are expanded for export and restored afterward", async 
 		null,
 		"thoughts should be restored to collapsed state after export",
 	);
+});
+
+test("sequence UI export excludes hidden labels and separates each event", async () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-sequence-ui.html"),
+		"utf8",
+	);
+	const root = parseHtml(html);
+	const messageListener = setupContentScript(root);
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+	});
+
+	assert.ok(response?.ok, "export should succeed");
+	const md = response.data.markdown;
+
+	// only-show-to-message-actions のエクスポートヘッダーが混入しないこと
+	assert.ok(!md.includes("1.ステップA:"), "export header should not appear");
+	assert.ok(!md.includes("2.ステップB:"), "export header should not appear");
+	assert.ok(!md.includes("3.ステップC:"), "export header should not appear");
+
+	// hide-from-message-actions のタイトルが単独見出しとして混入しないこと
+	assert.ok(
+		!md.includes("\nステップA\n"),
+		"sequence title should not appear as standalone line",
+	);
+	assert.ok(
+		!md.includes("最初にやること"),
+		"sequence subtitle should not appear",
+	);
+
+	// 各イベントの本文が独立して含まれること
+	assert.ok(md.includes("ステップAの本文です。"), "event A body should appear");
+	assert.ok(md.includes("ステップBの本文です。"), "event B body should appear");
+	assert.ok(md.includes("ステップCの本文です。"), "event C body should appear");
+
+	// 3つの本文が1行に連結されていないこと
+	assert.ok(
+		!md.includes("ステップAの本文です。ステップBの本文です。"),
+		"event bodies should not be concatenated",
+	);
+
+	// sequence の前後のテキストも含まれること
+	assert.ok(md.includes("以下の3つのステップがあります。"));
+	assert.ok(md.includes("以上が3つのステップです。"));
 });
 
 test("shared Gemini page sample is exported", async () => {

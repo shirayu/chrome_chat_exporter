@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 
 const CONTENT_SCRIPT_PATH = path.resolve(__dirname, "../../content.js");
+const MARKDOWN_SCRIPT_PATH = path.resolve(__dirname, "../../markdown.js");
 
 global.Node = {
 	TEXT_NODE: 3,
@@ -298,6 +299,9 @@ function setupContentScript(root, { hostname = "gemini.google.com" } = {}) {
 		__geminiChatExporterInjected: false,
 		location: { hostname },
 	};
+
+	delete require.cache[MARKDOWN_SCRIPT_PATH];
+	require(MARKDOWN_SCRIPT_PATH);
 
 	let messageListener = null;
 	global.chrome = {
