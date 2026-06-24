@@ -18,9 +18,9 @@
 	},
 	"version": "1.0.0",
 	"devDependencies": {
-		"@biomejs/biome": "2.4.16",
+		"@biomejs/biome": "2.5.1",
 		"markdownlint-cli2": "^0.22.1",
-		"npm-run-all2": "^9.0.1"
+		"npm-run-all2": "^9.0.2"
 	},
 	"engines": {
 		"npm": "Use pnpm instead of npm!"
