@@ -1,3 +1,4 @@
+
 # Chat TOML Export Format Specification (v3.0)
 
 ## 1. Overview
@@ -44,6 +45,14 @@ Basic metadata of the chat session itself.
 | `user_id` | String (UUIDv4) | Optional | ID of the user who owns the session. |
 | `created_at` | String (ISO 8601) | Optional | Date and time when the session was created. |
 | `last_activity` | String (ISO 8601) | Optional | Date and time of the last activity in the session. |
+| `metadata` | Table | Optional | Additional metadata of the session. See [3.2.1. Session Metadata](#321-session-metadata) for details. |
+
+#### 3.2.1. Session Metadata (`metadata` Table)
+
+| Field Name | Type | Required/Optional | Description |
+| :--- | :--- | :--- | :--- |
+| `message_count` | Integer | **Required** | Total number of messages in the session. |
+| `models_used` | Array (Strings) | Optional | List of model names used in this session. |
 
 ### 3.3. `[[messages]]` (Array of Messages)
 
@@ -59,7 +68,12 @@ A list of messages that make up the conversation. Since this is an array of tabl
 | `session_id` | String (UUIDv4) | Optional | ID of the chat session to which the message belongs. |
 | `user_id` | String (UUIDv4) | Optional | ID of the user who created the message. |
 | `parent_chat_message_id` | String (UUIDv4) | Optional | ID of the parent message (used for representing thread structures or conversation branches). |
+| `continuation_source_id` | String (UUIDv4) | Optional | ID of the message that was continued to generate this message. |
+| `edited_source_id` | String (UUIDv4) | Optional | ID of the original message that was edited to generate this message. |
 | `created_at` | String (ISO 8601) | Optional | Date and time when the message was created. |
+| `generation_request` | Table | Optional | Snapshot of what was generated and with which settings. See [4.8. `generation_request` Field Specification](#48-generation_request-field-specification) for details. |
+| `generation_result` | Table | Optional | Summary of the generation result. See [4.9. `generation_result` Field Specification](#49-generation_result-field-specification) for details. |
+| `generation_telemetry` | Table | Optional | Observed values of the generation process and origins. See [4.10. `generation_telemetry` Field Specification](#410-generation_telemetry-field-specification) for details. |
 
 ### 3.4. `[workflow_execution_history]` (Workflow History)
 
@@ -141,6 +155,57 @@ A fallback for parts defined only in newer versions or by specific providers tha
 * **`type`** (String, **Required**): Any part identifier name.
 * **`id`** (String (UUIDv4), **Required**): Unique ID of the part.
 
+### 4.8. `generation_request` Field Specification
+
+Represents the settings and parameters used for LLM generation.
+
+* **`model`** (String, Optional): The identifier of the model used (e.g., `"gpt-4o"`, `"gemini-1.5-pro"`).
+* **`chat_params`** (Table, Optional): OpenAI-compatible generation parameters.
+    * **`temperature`** (Float, Optional): Sampling temperature (0.0 to 2.0).
+    * **`max_tokens`** (Integer, Optional): Maximum tokens to generate.
+    * **`max_completion_tokens`** (Integer, Optional): Maximum completion tokens to generate.
+    * **`top_p`** (Float, Optional): Nucleus sampling probability.
+    * **`presence_penalty`** (Float, Optional): Presence penalty (-2.0 to 2.0).
+    * **`frequency_penalty`** (Float, Optional): Frequency penalty (-2.0 to 2.0).
+    * **`stop`** (String or Array of Strings, Optional): Stop sequences.
+    * **`verbosity`** (String, Optional): Verbosity level (`"low"`, `"medium"`, `"high"`).
+    * (Other OpenAI-compatible parameters are allowed as keys).
+* **`chat_prompt_config`** (Table, Optional): Prompt settings.
+* **`prompt_length`** (Integer, Optional): Length of the prompt tokens.
+* **`prefix_length`** (Integer, Optional): Length of the prefix tokens.
+
+### 4.9. `generation_result` Field Specification
+
+Summary of the generation result.
+
+* **`finish_reason`** (String, Optional): The reason why generation finished (e.g., `"stop"`, `"length"`, `"content_filter"`).
+* **`token_usage`** (Table, Optional): Token consumption summary.
+    * **`prompt_tokens`** (Integer, Optional): Number of tokens in the prompt.
+    * **`completion_tokens`** (Integer, Optional): Number of tokens in the completion.
+    * **`total_tokens`** (Integer, Optional): Total tokens used (`prompt_tokens` + `completion_tokens`).
+
+### 4.10. `generation_telemetry` Field Specification
+
+Observed telemetry data of the generation process, including retrieval origins.
+
+* **`started_at`** (String (ISO 8601), Optional): Timestamp when generation started.
+* **`completed_at`** (String (ISO 8601), Optional): Timestamp when generation completed.
+* **`time_to_first_token_ms`** (Integer, Optional): Time to first token in milliseconds.
+* **`part_telemetry`** (Table, Optional): Table mapping ContentPart IDs to part-specific telemetry.
+    * Keys are part IDs (String, UUIDv4), and values are tables containing:
+        * **`source`** (String, Optional): Origin/source of the part content (e.g., `"model_generation"`, `"web_search"`, `"cache"`).
+        * **`generated_started_at`** (String (ISO 8601), Optional): Generation start time for this part.
+        * **`generated_completed_at`** (String (ISO 8601), Optional): Generation completion time for this part.
+        * **`metadata`** (Table, Optional): Extra metadata associated with the part's retrieval or generation.
+* **`transition_telemetry`** (Array of Tables, Optional): Telemetry of stream transitions (e.g., transition from reasoning to answer).
+    * Each element is a table containing:
+        * **`from_part_id`** (String (UUIDv4), Optional)
+        * **`to_part_id`** (String (UUIDv4), Optional)
+        * **`kind`** (String, Required): The transition kind (e.g., `"reasoning_to_answer"`).
+        * **`at`** (String (ISO 8601), Optional)
+        * **`duration_ms`** (Integer, Optional)
+        * **`metadata`** (Table, Optional)
+
 ---
 
 ## 5. Compatibility and Normalization Rules by Version
@@ -171,7 +236,7 @@ In systems that interpret this format, to accept old `v2.0` format data while ma
 
 ## 6. Sample TOML Data
 
-Below is a sample of actual v3.0 data, consisting of a user message with an attached image and an assistant response with a reasoning process (thinking).
+Below is a sample of actual v3.0 data, consisting of a user message with an attached image and an assistant response with a reasoning process (thinking), along with generation parameters and telemetry metadata.
 
 ```toml
 [export_info]
@@ -184,6 +249,10 @@ title = "Image Analysis Test"
 user_id = "f4e3d2c1-b0a9-8f7e-6d5c-4b3a2f1e0d9c"
 created_at = "2026-06-25T14:28:00.000Z"
 last_activity = "2026-06-25T14:30:00.000Z"
+
+[session.metadata]
+message_count = 2
+models_used = ["gemini-1.5-pro"]
 
 # 1. Message from User (Text + Image Attachment)
 [[messages]]
@@ -205,7 +274,7 @@ type = "image"
 media_type = "image/png"
 default_url = "data:image/png;base64,iVBORw0KGgoAAA..." # Base64 format data as an example
 
-# 2. Response from Assistant (Reasoning + Answer Text)
+# 2. Response from Assistant (Reasoning + Answer Text with Generation Parameters and Metadata)
 [[messages]]
 id = "msg-00000002-1111-2222-3333-444455556666"
 role = "assistant"
@@ -214,6 +283,39 @@ session_id = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
 user_id = "f4e3d2c1-b0a9-8f7e-6d5c-4b3a2f1e0d9c"
 parent_chat_message_id = "msg-00000001-1111-2222-3333-444455556666"
 created_at = "2026-06-25T14:29:00.000Z"
+
+# Generation metadata fields:
+[messages.generation_request]
+model = "gemini-1.5-pro"
+prompt_length = 150
+
+[messages.generation_request.chat_params]
+temperature = 0.7
+max_tokens = 500
+verbosity = "medium"
+
+[messages.generation_result]
+finish_reason = "stop"
+
+[messages.generation_result.token_usage]
+prompt_tokens = 150
+completion_tokens = 45
+total_tokens = 195
+
+[messages.generation_telemetry]
+started_at = "2026-06-25T14:28:59.000Z"
+completed_at = "2026-06-25T14:29:00.000Z"
+time_to_first_token_ms = 250
+
+[messages.generation_telemetry.part_telemetry.part-00000003-2222-3333-4444-555566667777]
+source = "model_generation"
+generated_started_at = "2026-06-25T14:28:59.100Z"
+generated_completed_at = "2026-06-25T14:28:59.500Z"
+
+[messages.generation_telemetry.part_telemetry.part-00000004-2222-3333-4444-555566667777]
+source = "model_generation"
+generated_started_at = "2026-06-25T14:28:59.500Z"
+generated_completed_at = "2026-06-25T14:29:00.000Z"
 
 [[messages.parts]]
 id = "part-00000003-2222-3333-4444-555566667777"
