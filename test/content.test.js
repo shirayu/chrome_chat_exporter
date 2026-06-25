@@ -315,16 +315,36 @@ test("toml export matches v3.0 specification", async () => {
 	assert.ok(toml.includes('exported_at = "'), "should contain exported_at");
 
 	assert.ok(toml.includes("[session]"), "should contain session section");
+	assert.ok(toml.includes('id = "'), "should contain session id");
+	assert.ok(toml.includes('user_id = "'), "should contain user_id");
+	assert.ok(
+		toml.includes('created_at = "'),
+		"should contain session created_at",
+	);
+	assert.ok(
+		toml.includes('last_activity = "'),
+		"should contain session last_activity",
+	);
 	assert.ok(
 		toml.includes('title = "Gemini Export"'),
 		"should contain default title",
 	);
 
 	assert.ok(toml.includes("[[messages]]"), "should contain messages sections");
+	assert.ok(toml.includes('id = "'), "should contain message id");
 	assert.ok(toml.includes('role = "user"'), "should contain user role");
+	assert.ok(
+		toml.includes('session_id = "'),
+		"should link messages to session_id",
+	);
+	assert.ok(toml.includes('user_id = "'), "should link messages to user_id");
 	assert.ok(
 		toml.includes('role = "assistant"'),
 		"should contain assistant role",
+	);
+	assert.ok(
+		toml.includes('parent_chat_message_id = "'),
+		"should link assistant message to parent",
 	);
 
 	assert.ok(toml.includes("[[messages.parts]]"), "should contain parts array");
