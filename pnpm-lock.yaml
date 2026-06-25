@@ -17,6 +17,9 @@ importers:
       npm-run-all2:
         specifier: ^9.0.2
         version: 9.0.2
+      smol-toml:
+        specifier: ^1.7.0
+        version: 1.7.0
 
 packages:
 
@@ -416,6 +419,10 @@ packages:
 
   smol-toml@1.6.1:
     resolution: {integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg==}
+    engines: {node: '>= 18'}
+
+  smol-toml@1.7.0:
+    resolution: {integrity: sha512-aqVvWoyO21L23mb+drl4RmMXbf6N7FdHjAhTRA9ZBL7apWBgfWC16KjrASI+1p9GAroljyMHj6fK67i0UiTNvQ==}
     engines: {node: '>= 18'}
 
   string-width@8.1.0:
@@ -907,6 +914,8 @@ snapshots:
   slash@5.1.0: {}
 
   smol-toml@1.6.1: {}
+
+  smol-toml@1.7.0: {}
 
   string-width@8.1.0:
     dependencies:

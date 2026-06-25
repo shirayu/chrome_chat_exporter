@@ -292,6 +292,7 @@ test("shared Gemini page sample is exported", async () => {
 });
 
 test("toml export matches v3.0 specification", async () => {
+	const tomlParser = require("smol-toml");
 	const html = fs.readFileSync(
 		path.join(__dirname, "fixtures/gemini-thoughts-toggle.html"),
 		"utf8",
@@ -307,54 +308,79 @@ test("toml export matches v3.0 specification", async () => {
 	assert.ok(response?.ok, "export should succeed");
 	const toml = response.data.toml;
 
-	assert.ok(
-		toml.includes("[export_info]"),
-		"should contain export_info section",
-	);
-	assert.ok(toml.includes('format_version = "3.0"'), "should version 3.0");
-	assert.ok(toml.includes('exported_at = "'), "should contain exported_at");
+	let parsed;
+	assert.doesNotThrow(() => {
+		parsed = tomlParser.parse(toml);
+	}, "TOML syntax should be valid");
 
-	assert.ok(toml.includes("[session]"), "should contain session section");
-	assert.ok(toml.includes('id = "'), "should contain session id");
-	assert.ok(toml.includes('user_id = "'), "should contain user_id");
+	assert.equal(parsed.export_info?.format_version, "3.0");
+	assert.ok(parsed.export_info?.exported_at, "should contain exported_at");
+
+	assert.ok(parsed.session?.title, "should contain session title");
 	assert.ok(
-		toml.includes('created_at = "'),
-		"should contain session created_at",
-	);
-	assert.ok(
-		toml.includes('last_activity = "'),
-		"should contain session last_activity",
-	);
-	assert.ok(
-		/title = "Gemini Export \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\)"/.test(
-			toml,
+		/Gemini Export \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\)/.test(
+			parsed.session.title,
 		),
 		"should contain default title with date",
 	);
-
-	assert.ok(toml.includes("[[messages]]"), "should contain messages sections");
-	assert.ok(toml.includes('id = "'), "should contain message id");
-	assert.ok(toml.includes('role = "user"'), "should contain user role");
-	assert.ok(
-		toml.includes('session_id = "'),
-		"should link messages to session_id",
-	);
-	assert.ok(toml.includes('user_id = "'), "should link messages to user_id");
-	assert.ok(
-		toml.includes('role = "assistant"'),
-		"should contain assistant role",
-	);
-	assert.ok(
-		toml.includes('parent_chat_message_id = "'),
-		"should link assistant message to parent",
+	assert.equal(
+		parsed.session.metadata?.message_count,
+		2,
+		"message_count should be correct",
 	);
 
-	assert.ok(toml.includes("[[messages.parts]]"), "should contain parts array");
-	assert.ok(
-		toml.includes('type = "reasoning"'),
-		"should contain reasoning part",
+	// Verify omitted fields on Gemini
+	assert.equal(parsed.session.id, undefined);
+	assert.equal(parsed.session.user_id, undefined);
+	assert.equal(parsed.session.created_at, undefined);
+	assert.equal(parsed.session.last_activity, undefined);
+
+	assert.ok(Array.isArray(parsed.messages), "messages should be an array");
+	assert.equal(parsed.messages.length, 2);
+
+	const [userMsg, assistantMsg] = parsed.messages;
+
+	// User message assertions
+	assert.equal(userMsg.role, "user");
+	assert.equal(userMsg.text_content, "思考プロセスも保存したい");
+	assert.equal(userMsg.id, undefined);
+	assert.equal(userMsg.user_id, undefined);
+	assert.equal(userMsg.session_id, undefined);
+	assert.equal(userMsg.parent_chat_message_id, undefined);
+	assert.ok(Array.isArray(userMsg.parts), "user parts should be an array");
+	assert.equal(userMsg.parts.length, 1);
+	assert.equal(userMsg.parts[0].type, "text");
+	assert.equal(userMsg.parts[0].text, "思考プロセスも保存したい");
+
+	// Assistant message assertions
+	assert.equal(assistantMsg.role, "assistant");
+	assert.equal(
+		assistantMsg.text_content,
+		"了解です。思考プロセスを含めてエクスポートできます。",
 	);
-	assert.ok(toml.includes('type = "text"'), "should contain text part");
+	assert.equal(assistantMsg.id, undefined);
+	assert.equal(assistantMsg.user_id, undefined);
+	assert.equal(assistantMsg.session_id, undefined);
+	assert.equal(assistantMsg.parent_chat_message_id, undefined);
+	assert.ok(
+		Array.isArray(assistantMsg.parts),
+		"assistant parts should be an array",
+	);
+	assert.equal(assistantMsg.parts.length, 2);
+
+	// Reasoning part
+	assert.equal(assistantMsg.parts[0].type, "reasoning");
+	assert.equal(
+		assistantMsg.parts[0].thinking,
+		"まず要件を整理します。\n\n次に出力形式を分けて考えます。",
+	);
+
+	// Text part
+	assert.equal(assistantMsg.parts[1].type, "text");
+	assert.equal(
+		assistantMsg.parts[1].text,
+		"了解です。思考プロセスを含めてエクスポートできます。",
+	);
 
 	// Verify multiline format for text containing newlines
 	assert.ok(
@@ -365,11 +391,8 @@ test("toml export matches v3.0 specification", async () => {
 	);
 
 	assert.ok(
-		toml.includes("[workflow_execution_history]"),
+		parsed.workflow_execution_history,
 		"should contain history section",
 	);
-	assert.ok(
-		toml.includes("entries = []"),
-		"should contain empty history entries",
-	);
+	assert.deepEqual(parsed.workflow_execution_history.entries, []);
 });

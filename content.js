@@ -292,9 +292,17 @@
 				if (userText) {
 					record.role = "user";
 					record.user = userText;
+					const messageId = userNode.getAttribute("data-message-id");
+					if (messageId) {
+						record.userMessageId = messageId;
+					}
 				}
 			} else if (role === "assistant") {
+				const assistantNodes = Array.from(
+					turnNode.querySelectorAll(CHATGPT_SELECTORS.assistantMessage),
+				);
 				const responseNode =
+					assistantNodes[assistantNodes.length - 1] ||
 					turnNode.querySelector(CHATGPT_SELECTORS.assistantMessage) ||
 					turnNode;
 				const { modelText, modelHtmlStr } = extractChatGptModel(responseNode);
@@ -302,6 +310,18 @@
 					record.role = "assistant";
 					record.model = modelText;
 					record.modelHtml = modelHtmlStr;
+					if (responseNode) {
+						const messageId = responseNode.getAttribute("data-message-id");
+						if (messageId) {
+							record.assistantMessageId = messageId;
+						}
+						const modelSlug = responseNode.getAttribute(
+							"data-message-model-slug",
+						);
+						if (modelSlug) {
+							record.modelSlug = modelSlug;
+						}
+					}
 				}
 			}
 			if (record.role) {
@@ -332,10 +352,13 @@
 			}
 			turns.push({
 				user: pendingUser.user,
+				userMessageId: pendingUser.userMessageId || "",
 				thoughts: "",
 				thoughtsHtml: "",
 				model: record.model || "",
 				modelHtml: record.modelHtml || "",
+				assistantMessageId: record.assistantMessageId || "",
+				modelSlug: record.modelSlug || "",
 			});
 			pendingUser = null;
 		}
@@ -594,20 +617,6 @@
 		return buildTurnHeadingStyleMarkdown(turns, includeThoughts);
 	}
 
-	function generateUUID() {
-		if (
-			typeof crypto !== "undefined" &&
-			typeof crypto.randomUUID === "function"
-		) {
-			return crypto.randomUUID();
-		}
-		return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-			const r = (Math.random() * 16) | 0;
-			const v = c === "x" ? r : (r & 0x3) | 0x8;
-			return v.toString(16);
-		});
-	}
-
 	function toTomlValue(str) {
 		if (typeof str !== "string") return '""';
 		if (str.includes("\n")) {
@@ -639,95 +648,180 @@
 		const now = new Date();
 		const title = getChatTitle(now);
 
-		const sessionId = generateUUID();
-		const userId = generateUUID();
+		let modelsUsed = null;
+		if (
+			SITE === "claude" &&
+			typeof document !== "undefined" &&
+			typeof document.querySelector === "function"
+		) {
+			const dropdown = document.querySelector(
+				'[data-testid="model-selector-dropdown"]',
+			);
+			const label = dropdown ? dropdown.getAttribute("aria-label") : null;
+			if (label) {
+				const match = label.match(/^(?:モデル|Model):\s*(.*)$/i);
+				const modelName = match ? match[1].trim() : label.trim();
+				if (modelName) {
+					modelsUsed = [modelName];
+				}
+			}
+		}
 
-		const durationMinutes = Math.max(1, turns.length * 2);
-		const sessionCreatedAt = new Date(
-			now.getTime() - durationMinutes * 60 * 1000,
-		);
-		const sessionLastActivity = now;
+		const sessionMetadata = {
+			message_count: turns.length * 2,
+		};
+		if (modelsUsed) {
+			sessionMetadata.models_used = modelsUsed;
+		}
 
-		const lines = [
-			"[export_info]",
-			'format_version = "3.0"',
-			`exported_at = ${toTomlValue(now.toISOString())}`,
-			"",
-			"[session]",
-			`id = ${toTomlValue(sessionId)}`,
-			`title = ${toTomlValue(title)}`,
-			`user_id = ${toTomlValue(userId)}`,
-			`created_at = ${toTomlValue(sessionCreatedAt.toISOString())}`,
-			`last_activity = ${toTomlValue(sessionLastActivity.toISOString())}`,
-			"",
-		];
-
+		const messages = [];
 		let parentId = null;
 
-		turns.forEach((turn, index) => {
-			const userMsgId = generateUUID();
-			const assistantMsgId = generateUUID();
+		turns.forEach((turn) => {
+			const userMsgId =
+				SITE === "chatgpt" && turn.userMessageId ? turn.userMessageId : null;
+			const assistantMsgId =
+				SITE === "chatgpt" && turn.assistantMessageId
+					? turn.assistantMessageId
+					: null;
 
-			const userCreatedAt = new Date(
-				sessionCreatedAt.getTime() + index * 2 * 60 * 1000,
-			);
-			const assistantCreatedAt = new Date(userCreatedAt.getTime() + 30 * 1000);
-
-			lines.push(
-				"[[messages]]",
-				`id = ${toTomlValue(userMsgId)}`,
-				'role = "user"',
-				`text_content = ${toTomlValue(turn.user || "")}`,
-				`session_id = ${toTomlValue(sessionId)}`,
-				`user_id = ${toTomlValue(userId)}`,
-				`created_at = ${toTomlValue(userCreatedAt.toISOString())}`,
-			);
-			if (parentId) {
-				lines.push(`parent_chat_message_id = ${toTomlValue(parentId)}`);
+			const userMsg = {
+				role: "user",
+				text_content: turn.user || "",
+				parts: [
+					{
+						type: "text",
+						text: turn.user || "",
+					},
+				],
+			};
+			if (userMsgId) {
+				userMsg.id = userMsgId;
 			}
-			lines.push(
-				"",
-				"[[messages.parts]]",
-				`id = ${toTomlValue(generateUUID())}`,
-				'type = "text"',
-				`text = ${toTomlValue(turn.user || "")}`,
-				"",
-			);
+			if (parentId) {
+				userMsg.parent_chat_message_id = parentId;
+			}
+			messages.push(userMsg);
 
-			lines.push(
-				"[[messages]]",
-				`id = ${toTomlValue(assistantMsgId)}`,
-				'role = "assistant"',
-				`text_content = ${toTomlValue(turn.model || "")}`,
-				`session_id = ${toTomlValue(sessionId)}`,
-				`user_id = ${toTomlValue(userId)}`,
-				`parent_chat_message_id = ${toTomlValue(userMsgId)}`,
-				`created_at = ${toTomlValue(assistantCreatedAt.toISOString())}`,
-				"",
-			);
+			const assistantMsg = {
+				role: "assistant",
+				text_content: turn.model || "",
+				parts: [],
+			};
+			if (assistantMsgId) {
+				assistantMsg.id = assistantMsgId;
+			}
+			if (userMsgId) {
+				assistantMsg.parent_chat_message_id = userMsgId;
+			}
+
+			if (SITE === "chatgpt" && turn.modelSlug) {
+				assistantMsg.generation_request = {
+					model: turn.modelSlug,
+				};
+			}
 
 			if (includeThoughts && turn.thoughts) {
-				lines.push(
-					"[[messages.parts]]",
-					`id = ${toTomlValue(generateUUID())}`,
-					'type = "reasoning"',
-					`thinking = ${toTomlValue(turn.thoughts)}`,
-					"",
-				);
+				assistantMsg.parts.push({
+					type: "reasoning",
+					thinking: turn.thoughts,
+				});
 			}
 
-			lines.push(
-				"[[messages.parts]]",
-				`id = ${toTomlValue(generateUUID())}`,
-				'type = "text"',
-				`text = ${toTomlValue(turn.model || "")}`,
-				"",
-			);
+			assistantMsg.parts.push({
+				type: "text",
+				text: turn.model || "",
+			});
+
+			messages.push(assistantMsg);
 
 			parentId = assistantMsgId;
 		});
 
-		lines.push("[workflow_execution_history]", "entries = []");
+		const tomlData = {
+			export_info: {
+				format_version: "3.0",
+				exported_at: now.toISOString(),
+			},
+			session: {
+				title: title,
+				metadata: sessionMetadata,
+			},
+			messages: messages,
+		};
+
+		return stringifyToml(tomlData);
+	}
+
+	function stringifyToml(data) {
+		const lines = [];
+
+		lines.push("[export_info]");
+		lines.push(
+			`format_version = ${toTomlValue(data.export_info.format_version)}`,
+		);
+		lines.push(`exported_at = ${toTomlValue(data.export_info.exported_at)}`);
+		lines.push("");
+
+		lines.push("[session]");
+		lines.push(`title = ${toTomlValue(data.session.title)}`);
+		if (data.session.metadata) {
+			lines.push("");
+			lines.push("[session.metadata]");
+			lines.push(`message_count = ${data.session.metadata.message_count}`);
+			if (data.session.metadata.models_used) {
+				const models = data.session.metadata.models_used
+					.map((m) => toTomlValue(m))
+					.join(", ");
+				lines.push(`models_used = [${models}]`);
+			}
+		}
+		lines.push("");
+
+		if (data.messages && data.messages.length > 0) {
+			data.messages.forEach((msg) => {
+				lines.push("[[messages]]");
+				if (msg.id) {
+					lines.push(`id = ${toTomlValue(msg.id)}`);
+				}
+				lines.push(`role = ${toTomlValue(msg.role)}`);
+				if (msg.text_content !== undefined) {
+					lines.push(`text_content = ${toTomlValue(msg.text_content)}`);
+				}
+				if (msg.parent_chat_message_id) {
+					lines.push(
+						`parent_chat_message_id = ${toTomlValue(msg.parent_chat_message_id)}`,
+					);
+				}
+
+				if (msg.generation_request) {
+					lines.push("");
+					lines.push("[messages.generation_request]");
+					lines.push(`model = ${toTomlValue(msg.generation_request.model)}`);
+				}
+
+				if (msg.parts && msg.parts.length > 0) {
+					msg.parts.forEach((part) => {
+						lines.push("");
+						lines.push("[[messages.parts]]");
+						if (part.id) {
+							lines.push(`id = ${toTomlValue(part.id)}`);
+						}
+						lines.push(`type = ${toTomlValue(part.type)}`);
+						if (part.text !== undefined) {
+							lines.push(`text = ${toTomlValue(part.text)}`);
+						}
+						if (part.thinking !== undefined) {
+							lines.push(`thinking = ${toTomlValue(part.thinking)}`);
+						}
+					});
+				}
+				lines.push("");
+			});
+		}
+
+		lines.push("[workflow_execution_history]");
+		lines.push("entries = []");
 
 		return lines.join("\n");
 	}

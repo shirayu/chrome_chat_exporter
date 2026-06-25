@@ -20,7 +20,8 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.5.1",
 		"markdownlint-cli2": "^0.22.1",
-		"npm-run-all2": "^9.0.2"
+		"npm-run-all2": "^9.0.2",
+		"smol-toml": "^1.7.0"
 	},
 	"engines": {
 		"npm": "Use pnpm instead of npm!"

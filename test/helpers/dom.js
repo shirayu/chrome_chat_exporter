@@ -293,6 +293,9 @@ function setupContentScript(root, { hostname = "gemini.google.com" } = {}) {
 		querySelectorAll(selector) {
 			return root.querySelectorAll(selector);
 		},
+		querySelector(selector) {
+			return root.querySelector(selector);
+		},
 	};
 
 	global.window = {
