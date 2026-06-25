@@ -45,7 +45,7 @@ Basic metadata of the chat session itself.
 | `user_id` | String (UUIDv4) | Optional | ID of the user who owns the session. |
 | `created_at` | String (ISO 8601) | Optional | Date and time when the session was created. |
 | `last_activity` | String (ISO 8601) | Optional | Date and time of the last activity in the session. |
-| `metadata` | Table | Optional | Additional metadata of the session. See [3.2.1. Session Metadata](#321-session-metadata) for details. |
+| `metadata` | Table | Optional | Additional metadata of the session. See [3.2.1. Session Metadata](#321-session-metadata-metadata-table) for details. |
 
 #### 3.2.1. Session Metadata (`metadata` Table)
 

@@ -80,8 +80,10 @@ test("claude export html uses Claude label", async () => {
 		"html should use Claude label",
 	);
 	assert.ok(
-		response.data.html.includes("<title>Claude Export</title>"),
-		"html title should say Claude Export",
+		/<title>Claude Export \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\)<\/title>/.test(
+			response.data.html,
+		),
+		"html title should say Claude Export with date",
 	);
 });
 
@@ -155,7 +157,9 @@ test("claude toml export uses Claude label", async () => {
 	assert.ok(response?.ok);
 	const toml = response.data.toml;
 	assert.ok(
-		toml.includes('title = "Claude Export"'),
-		"toml session title should be Claude Export",
+		/title = "Claude Export \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\)"/.test(
+			toml,
+		),
+		"toml session title should be Claude Export with date",
 	);
 });

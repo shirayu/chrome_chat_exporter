@@ -54,7 +54,11 @@ test("chatgpt export markdown and html use ChatGPT label", async () => {
 	assert.ok(!response.data.markdown.includes("### Claude"));
 	assert.ok(!response.data.markdown.includes("### Gemini"));
 	assert.ok(response.data.html.includes("<h3>ChatGPT</h3>"));
-	assert.ok(response.data.html.includes("<title>ChatGPT Export</title>"));
+	assert.ok(
+		/<title>ChatGPT Export \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\)<\/title>/.test(
+			response.data.html,
+		),
+	);
 });
 
 test("chatgpt current and select scopes choose expected turns", async () => {

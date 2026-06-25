@@ -1,6 +1,11 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
 	"files": {
-		"includes": ["**", "!test/fixtures/gemini-svm-response.html"]
+		"includes": [
+			"**",
+			"!test/fixtures/gemini-svm-response.html",
+			"!tmp",
+			"!node_modules"
+		]
 	}
 }

@@ -326,8 +326,10 @@ test("toml export matches v3.0 specification", async () => {
 		"should contain session last_activity",
 	);
 	assert.ok(
-		toml.includes('title = "Gemini Export"'),
-		"should contain default title",
+		/title = "Gemini Export \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\)"/.test(
+			toml,
+		),
+		"should contain default title with date",
 	);
 
 	assert.ok(toml.includes("[[messages]]"), "should contain messages sections");

@@ -442,13 +442,14 @@
 		return SITE_LABELS[SITE] ?? "Gemini";
 	}
 
-	function getChatTitle() {
+	function getChatTitle(date) {
 		const modelLabel = getModelLabel();
 		const docTitle =
 			typeof document !== "undefined" && document.title
 				? document.title.trim()
 				: "";
 		const lowerTitle = docTitle.toLowerCase();
+		let baseTitle = "";
 		if (
 			!docTitle ||
 			lowerTitle === "gemini" ||
@@ -457,18 +458,23 @@
 			lowerTitle === "new chat" ||
 			lowerTitle === "新しいチャット"
 		) {
-			return `${modelLabel} Export`;
+			baseTitle = `${modelLabel} Export`;
+		} else {
+			baseTitle = docTitle
+				.replace(/\s*-\s*Gemini$/i, "")
+				.replace(/\s*-\s*Claude$/i, "")
+				.replace(/\s*-\s*ChatGPT$/i, "")
+				.trim();
 		}
-		return docTitle
-			.replace(/\s*-\s*Gemini$/i, "")
-			.replace(/\s*-\s*Claude$/i, "")
-			.replace(/\s*-\s*ChatGPT$/i, "")
-			.trim();
+		const d = date || new Date();
+		const pad = (n) => String(n).padStart(2, "0");
+		const timeStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+		return `${baseTitle} (${timeStr})`;
 	}
 
 	function buildHtml(turns, includeThoughts) {
 		const modelLabel = getModelLabel();
-		const title = getChatTitle();
+		const title = getChatTitle(new Date());
 		const body = turns
 			.map((turn, index) => {
 				const userHtml = escapeHtml(turn.user).replace(/\n/g, "<br>");
@@ -630,8 +636,8 @@
 	}
 
 	function buildToml(turns, includeThoughts) {
-		const title = getChatTitle();
 		const now = new Date();
+		const title = getChatTitle(now);
 
 		const sessionId = generateUUID();
 		const userId = generateUUID();
