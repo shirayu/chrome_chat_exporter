@@ -665,6 +665,8 @@
 					modelsUsed = [modelName];
 				}
 			}
+		} else if (SITE === "gemini") {
+			modelsUsed = ["Gemini"];
 		}
 
 		const sessionMetadata = {

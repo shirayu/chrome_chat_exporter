@@ -328,6 +328,11 @@ test("toml export matches v3.0 specification", async () => {
 		2,
 		"message_count should be correct",
 	);
+	assert.deepEqual(
+		parsed.session.metadata?.models_used,
+		["Gemini"],
+		"models_used should be ['Gemini']",
+	);
 
 	// Verify omitted fields on Gemini
 	assert.equal(parsed.session.id, undefined);
