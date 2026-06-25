@@ -17,7 +17,7 @@
         font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
         margin: 0;
         padding: 12px;
-        width: 360px;
+        width: 420px;
         max-width: 100%;
         background: linear-gradient(160deg, #fef3c7 0%, #e0f2fe 65%, #f8fafc 100%);
         color: #0f172a;
@@ -60,7 +60,8 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
       }
-      .option-group.scope-group {
+      .option-group.scope-group,
+      .option-group.format-group {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
       .option {
@@ -274,7 +275,7 @@
         <div class="scope-note" id="scope-note"></div>
       </div>
       <div class="section format">
-        <div class="option-group">
+        <div class="option-group format-group">
           <label class="option">
           <input type="radio" name="format" value="toml" checked />
             <span class="text">
