@@ -442,9 +442,33 @@
 		return SITE_LABELS[SITE] ?? "Gemini";
 	}
 
+	function getChatTitle() {
+		const modelLabel = getModelLabel();
+		const docTitle =
+			typeof document !== "undefined" && document.title
+				? document.title.trim()
+				: "";
+		const lowerTitle = docTitle.toLowerCase();
+		if (
+			!docTitle ||
+			lowerTitle === "gemini" ||
+			lowerTitle === "claude" ||
+			lowerTitle === "chatgpt" ||
+			lowerTitle === "new chat" ||
+			lowerTitle === "新しいチャット"
+		) {
+			return `${modelLabel} Export`;
+		}
+		return docTitle
+			.replace(/\s*-\s*Gemini$/i, "")
+			.replace(/\s*-\s*Claude$/i, "")
+			.replace(/\s*-\s*ChatGPT$/i, "")
+			.trim();
+	}
+
 	function buildHtml(turns, includeThoughts) {
 		const modelLabel = getModelLabel();
-		const title = `${modelLabel} Export`;
+		const title = getChatTitle();
 		const body = turns
 			.map((turn, index) => {
 				const userHtml = escapeHtml(turn.user).replace(/\n/g, "<br>");
@@ -564,6 +588,144 @@
 		return buildTurnHeadingStyleMarkdown(turns, includeThoughts);
 	}
 
+	function generateUUID() {
+		if (
+			typeof crypto !== "undefined" &&
+			typeof crypto.randomUUID === "function"
+		) {
+			return crypto.randomUUID();
+		}
+		return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+			const r = (Math.random() * 16) | 0;
+			const v = c === "x" ? r : (r & 0x3) | 0x8;
+			return v.toString(16);
+		});
+	}
+
+	function toTomlValue(str) {
+		if (typeof str !== "string") return '""';
+		if (str.includes("\n")) {
+			let escaped = "";
+			for (let i = 0; i < str.length; i += 1) {
+				const char = str[i];
+				const code = char.charCodeAt(0);
+				if (char === "\\") {
+					escaped += "\\\\";
+				} else if (char === '"') {
+					escaped += '\\"';
+				} else if (
+					code < 0x20 &&
+					char !== "\n" &&
+					char !== "\r" &&
+					char !== "\t"
+				) {
+					escaped += `\\u${code.toString(16).padStart(4, "0")}`;
+				} else {
+					escaped += char;
+				}
+			}
+			return `"""\n${escaped}"""`;
+		}
+		return JSON.stringify(str);
+	}
+
+	function buildToml(turns, includeThoughts) {
+		const title = getChatTitle();
+		const now = new Date();
+
+		const sessionId = generateUUID();
+		const userId = generateUUID();
+
+		const durationMinutes = Math.max(1, turns.length * 2);
+		const sessionCreatedAt = new Date(
+			now.getTime() - durationMinutes * 60 * 1000,
+		);
+		const sessionLastActivity = now;
+
+		const lines = [
+			"[export_info]",
+			'format_version = "3.0"',
+			`exported_at = ${toTomlValue(now.toISOString())}`,
+			"",
+			"[session]",
+			`id = ${toTomlValue(sessionId)}`,
+			`title = ${toTomlValue(title)}`,
+			`user_id = ${toTomlValue(userId)}`,
+			`created_at = ${toTomlValue(sessionCreatedAt.toISOString())}`,
+			`last_activity = ${toTomlValue(sessionLastActivity.toISOString())}`,
+			"",
+		];
+
+		let parentId = null;
+
+		turns.forEach((turn, index) => {
+			const userMsgId = generateUUID();
+			const assistantMsgId = generateUUID();
+
+			const userCreatedAt = new Date(
+				sessionCreatedAt.getTime() + index * 2 * 60 * 1000,
+			);
+			const assistantCreatedAt = new Date(userCreatedAt.getTime() + 30 * 1000);
+
+			lines.push(
+				"[[messages]]",
+				`id = ${toTomlValue(userMsgId)}`,
+				'role = "user"',
+				`text_content = ${toTomlValue(turn.user || "")}`,
+				`session_id = ${toTomlValue(sessionId)}`,
+				`user_id = ${toTomlValue(userId)}`,
+				`created_at = ${toTomlValue(userCreatedAt.toISOString())}`,
+			);
+			if (parentId) {
+				lines.push(`parent_chat_message_id = ${toTomlValue(parentId)}`);
+			}
+			lines.push(
+				"",
+				"[[messages.parts]]",
+				`id = ${toTomlValue(generateUUID())}`,
+				'type = "text"',
+				`text = ${toTomlValue(turn.user || "")}`,
+				"",
+			);
+
+			lines.push(
+				"[[messages]]",
+				`id = ${toTomlValue(assistantMsgId)}`,
+				'role = "assistant"',
+				`text_content = ${toTomlValue(turn.model || "")}`,
+				`session_id = ${toTomlValue(sessionId)}`,
+				`user_id = ${toTomlValue(userId)}`,
+				`parent_chat_message_id = ${toTomlValue(userMsgId)}`,
+				`created_at = ${toTomlValue(assistantCreatedAt.toISOString())}`,
+				"",
+			);
+
+			if (includeThoughts && turn.thoughts) {
+				lines.push(
+					"[[messages.parts]]",
+					`id = ${toTomlValue(generateUUID())}`,
+					'type = "reasoning"',
+					`thinking = ${toTomlValue(turn.thoughts)}`,
+					"",
+				);
+			}
+
+			lines.push(
+				"[[messages.parts]]",
+				`id = ${toTomlValue(generateUUID())}`,
+				'type = "text"',
+				`text = ${toTomlValue(turn.model || "")}`,
+				"",
+			);
+
+			parentId = assistantMsgId;
+		});
+
+		lines.push("[workflow_execution_history]", "entries = []");
+
+		return lines.join("\n");
+	}
+
 	async function extractClaude(
 		scope,
 		turnIndex,
@@ -618,6 +780,7 @@
 			turns,
 			html: buildHtml(turns, includeThoughts),
 			markdown: buildMarkdown(turns, markdownStyle, includeThoughts),
+			toml: buildToml(turns, includeThoughts),
 		};
 	}
 
@@ -644,6 +807,7 @@
 			turns,
 			html: buildHtml(turns, includeThoughts),
 			markdown: buildMarkdown(turns, markdownStyle, includeThoughts),
+			toml: buildToml(turns, includeThoughts),
 		};
 	}
 
@@ -679,6 +843,7 @@
 			turns,
 			html: buildHtml(turns, includeThoughts),
 			markdown: buildMarkdown(turns, markdownStyle, includeThoughts),
+			toml: buildToml(turns, includeThoughts),
 		};
 	}
 
