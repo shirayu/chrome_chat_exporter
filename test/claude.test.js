@@ -144,3 +144,18 @@ test("claude LIST_GEMINI_TURNS returns turn list", async () => {
 	assert.ok(response.data.turns[0].label.includes("Pythonとは何ですか"));
 	assert.equal(response.data.turns[1].index, 1);
 });
+
+test("claude toml export uses Claude label", async () => {
+	const messageListener = setupClaude("claude-simple.html");
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+	});
+
+	assert.ok(response?.ok);
+	const toml = response.data.toml;
+	assert.ok(
+		toml.includes('title = "Claude Export"'),
+		"toml session title should be Claude Export",
+	);
+});

@@ -46,7 +46,7 @@ function getSelectedTurnIndex() {
 
 function getFormat() {
 	const selected = document.querySelector("input[name=format]:checked");
-	return selected ? selected.value : "md";
+	return selected ? selected.value : "toml";
 }
 
 function getMarkdownStyle() {
@@ -274,12 +274,24 @@ async function requestExport(format, output) {
 		}
 
 		const payload = response.data;
-		const isHtml = format === "html";
-		const data = isHtml ? payload.html : payload.markdown;
-		const extension = isHtml ? "html" : "md";
-		const blob = new Blob([data], {
-			type: isHtml ? "text/html" : "text/markdown",
-		});
+		let data = "";
+		let extension = "";
+		let mimeType = "";
+
+		if (format === "html") {
+			data = payload.html;
+			extension = "html";
+			mimeType = "text/html";
+		} else if (format === "toml") {
+			data = payload.toml;
+			extension = "toml";
+			mimeType = "application/toml";
+		} else {
+			data = payload.markdown;
+			extension = "md";
+			mimeType = "text/markdown";
+		}
+		const blob = new Blob([data], { type: mimeType });
 		const url = URL.createObjectURL(blob);
 
 		const targetOutput = output === "download" ? "download" : "clipboard";

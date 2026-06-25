@@ -290,3 +290,64 @@ test("shared Gemini page sample is exported", async () => {
 		"shared page markdown should include Gemini heading",
 	);
 });
+
+test("toml export matches v3.0 specification", async () => {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures/gemini-thoughts-toggle.html"),
+		"utf8",
+	);
+	const root = parseHtml(html);
+	const messageListener = setupContentScript(root);
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		includeThoughts: true,
+	});
+
+	assert.ok(response?.ok, "export should succeed");
+	const toml = response.data.toml;
+
+	assert.ok(
+		toml.includes("[export_info]"),
+		"should contain export_info section",
+	);
+	assert.ok(toml.includes('format_version = "3.0"'), "should version 3.0");
+	assert.ok(toml.includes('exported_at = "'), "should contain exported_at");
+
+	assert.ok(toml.includes("[session]"), "should contain session section");
+	assert.ok(
+		toml.includes('title = "Gemini Export"'),
+		"should contain default title",
+	);
+
+	assert.ok(toml.includes("[[messages]]"), "should contain messages sections");
+	assert.ok(toml.includes('role = "user"'), "should contain user role");
+	assert.ok(
+		toml.includes('role = "assistant"'),
+		"should contain assistant role",
+	);
+
+	assert.ok(toml.includes("[[messages.parts]]"), "should contain parts array");
+	assert.ok(
+		toml.includes('type = "reasoning"'),
+		"should contain reasoning part",
+	);
+	assert.ok(toml.includes('type = "text"'), "should contain text part");
+
+	// Verify multiline format for text containing newlines
+	assert.ok(
+		toml.includes(
+			'thinking = """\nまず要件を整理します。\n\n次に出力形式を分けて考えます。"""',
+		),
+		"thinking should be exported in multiline basic string format with actual newlines",
+	);
+
+	assert.ok(
+		toml.includes("[workflow_execution_history]"),
+		"should contain history section",
+	);
+	assert.ok(
+		toml.includes("entries = []"),
+		"should contain empty history entries",
+	);
+});

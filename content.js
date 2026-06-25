@@ -564,6 +564,89 @@
 		return buildTurnHeadingStyleMarkdown(turns, includeThoughts);
 	}
 
+	function toTomlValue(str) {
+		if (typeof str !== "string") return '""';
+		if (str.includes("\n")) {
+			let escaped = "";
+			for (let i = 0; i < str.length; i += 1) {
+				const char = str[i];
+				const code = char.charCodeAt(0);
+				if (char === "\\") {
+					escaped += "\\\\";
+				} else if (char === '"') {
+					escaped += '\\"';
+				} else if (
+					code < 0x20 &&
+					char !== "\n" &&
+					char !== "\r" &&
+					char !== "\t"
+				) {
+					escaped += `\\u${code.toString(16).padStart(4, "0")}`;
+				} else {
+					escaped += char;
+				}
+			}
+			return `"""\n${escaped}"""`;
+		}
+		return JSON.stringify(str);
+	}
+
+	function buildToml(turns, includeThoughts) {
+		const modelLabel = getModelLabel();
+		const title = `${modelLabel} Export`;
+		const exportedAt = new Date().toISOString();
+
+		const lines = [
+			"[export_info]",
+			'format_version = "3.0"',
+			`exported_at = ${toTomlValue(exportedAt)}`,
+			"",
+			"[session]",
+			`title = ${toTomlValue(title)}`,
+			"",
+		];
+
+		turns.forEach((turn) => {
+			lines.push(
+				"[[messages]]",
+				'role = "user"',
+				`text_content = ${toTomlValue(turn.user || "")}`,
+				"",
+				"[[messages.parts]]",
+				'type = "text"',
+				`text = ${toTomlValue(turn.user || "")}`,
+				"",
+			);
+
+			lines.push(
+				"[[messages]]",
+				'role = "assistant"',
+				`text_content = ${toTomlValue(turn.model || "")}`,
+				"",
+			);
+
+			if (includeThoughts && turn.thoughts) {
+				lines.push(
+					"[[messages.parts]]",
+					'type = "reasoning"',
+					`thinking = ${toTomlValue(turn.thoughts)}`,
+					"",
+				);
+			}
+
+			lines.push(
+				"[[messages.parts]]",
+				'type = "text"',
+				`text = ${toTomlValue(turn.model || "")}`,
+				"",
+			);
+		});
+
+		lines.push("[workflow_execution_history]", "entries = []");
+
+		return lines.join("\n");
+	}
+
 	async function extractClaude(
 		scope,
 		turnIndex,
@@ -618,6 +701,7 @@
 			turns,
 			html: buildHtml(turns, includeThoughts),
 			markdown: buildMarkdown(turns, markdownStyle, includeThoughts),
+			toml: buildToml(turns, includeThoughts),
 		};
 	}
 
@@ -644,6 +728,7 @@
 			turns,
 			html: buildHtml(turns, includeThoughts),
 			markdown: buildMarkdown(turns, markdownStyle, includeThoughts),
+			toml: buildToml(turns, includeThoughts),
 		};
 	}
 
@@ -679,6 +764,7 @@
 			turns,
 			html: buildHtml(turns, includeThoughts),
 			markdown: buildMarkdown(turns, markdownStyle, includeThoughts),
+			toml: buildToml(turns, includeThoughts),
 		};
 	}
 
