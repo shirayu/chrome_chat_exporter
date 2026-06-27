@@ -422,6 +422,7 @@ Promise.all([
 		loadTurnOptions(tab.id);
 	} else {
 		setStatus(chrome.i18n.getMessage("statusOpenGemini"), true);
+		document.getElementById("main-ui").hidden = true;
 	}
 	toggleTurnSelect();
 });
