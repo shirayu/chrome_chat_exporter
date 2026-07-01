@@ -18,8 +18,8 @@
 	},
 	"version": "1.0.0",
 	"devDependencies": {
-		"@biomejs/biome": "2.5.1",
-		"markdownlint-cli2": "^0.22.1",
+		"@biomejs/biome": "2.5.2",
+		"markdownlint-cli2": "^0.23.0",
 		"npm-run-all2": "^9.0.2",
 		"smol-toml": "^1.7.0"
 	},
