@@ -689,7 +689,6 @@
 
 			const userMsg = {
 				role: "user",
-				text_content: turn.user || "",
 				parts: [
 					{
 						type: "text",
@@ -707,7 +706,6 @@
 
 			const assistantMsg = {
 				role: "assistant",
-				text_content: turn.model || "",
 				parts: [],
 			};
 			if (assistantMsgId) {
@@ -742,7 +740,7 @@
 
 		const tomlData = {
 			export_info: {
-				format_version: "3.0",
+				format_version: "4.0",
 				exported_at: now.toISOString(),
 			},
 			session: {
@@ -787,9 +785,6 @@
 					lines.push(`id = ${toTomlValue(msg.id)}`);
 				}
 				lines.push(`role = ${toTomlValue(msg.role)}`);
-				if (msg.text_content !== undefined) {
-					lines.push(`text_content = ${toTomlValue(msg.text_content)}`);
-				}
 				if (msg.parent_chat_message_id) {
 					lines.push(
 						`parent_chat_message_id = ${toTomlValue(msg.parent_chat_message_id)}`,

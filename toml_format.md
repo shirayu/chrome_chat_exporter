@@ -1,14 +1,19 @@
 
-# Chat TOML Export Format Specification (v3.0)
+# Chat TOML Export Format Specification (v4.0)
 
 ## 1. Overview
 
 This format is defined for integrating and migrating chat sessions, message histories, and workflow execution histories with other projects or tools.
 
-* **Supported Versions**: `"2.0"`, `"3.0"`
+* **Export Version**: `"4.0"` (current, written by the exporter)
+* **Import-Supported Versions**: `"2.0"`, `"3.0"`, `"4.0"` (older formats are still accepted for reading)
 * **Data Characteristics**:
     * Represented in TOML format, but structurally maps 1:1 completely with JSON.
     * Supports multimodal content (text, image, audio, document, AI's thinking process, etc.).
+* **Change from v3.0**: The `text_content` field has been removed from `[[messages]]`. `text_content` was a
+  search-index value derived from `parts` (see backend `extract_search_text()`), never an independent source of
+  truth, and it was liable to carry attachment text that had leaked into it (see project bug history). `parts` is
+  the sole source of truth for message body content in v4.0 and later.
 
 ---
 
@@ -31,7 +36,7 @@ Administrative metadata related to the export.
 
 | Field Name | Type | Required/Optional | Description |
 | :--- | :--- | :--- | :--- |
-| `format_version` | String | **Required** | The version of the format. Either `"2.0"` or `"3.0"`. |
+| `format_version` | String | **Required** | The version of the format. `"4.0"` for newly exported files; `"2.0"` or `"3.0"` may appear in files imported from older exports. |
 | `exported_at` | String (ISO 8601) | **Required** | The date and time when the export was executed (e.g., `"2026-06-25T14:30:00.000Z"`). |
 
 ### 3.2. `[session]` (Session Information)
@@ -62,9 +67,8 @@ A list of messages that make up the conversation. Since this is an array of tabl
 | :--- | :--- | :--- | :--- |
 | `id` | String (UUIDv4) | Optional | Unique identifier of the message. |
 | `role` | String | **Required** | The role of the sender. One of `"user"`, `"assistant"`, or `"system"`. |
-| `content` | String | Optional (for v2.0) | Body of the message. Used in v2.0 format (deprecated in v3.0). |
-| `text_content` | String | Optional (for v3.0) | Plain text body of the message. |
-| `parts` | Array (Objects) | Optional (for v3.0) | Multimodal content parts. For details, see "4. Message Part Specification". |
+| `content` | String | Deprecated, import-only (v2.0) | Body of the message. Only appears in v2.0 files being imported; never written by the v4.0 exporter. |
+| `parts` | Array (Objects) | **Required** (v4.0) | Multimodal content parts and sole source of truth for message body content. For details, see "4. Message Part Specification". |
 | `session_id` | String (UUIDv4) | Optional | ID of the chat session to which the message belongs. |
 | `user_id` | String (UUIDv4) | Optional | ID of the user who created the message. |
 | `parent_chat_message_id` | String (UUIDv4) | Optional | ID of the parent message (used for representing thread structures or conversation branches). |
@@ -210,37 +214,48 @@ Observed telemetry data of the generation process, including retrieval origins.
 
 ## 5. Compatibility and Normalization Rules by Version
 
-### 5.1. Differences between v2.0 and v3.0
+### 5.1. Differences between v2.0, v3.0, and v4.0
 
 There are structural differences in how the message body is represented.
 
 * **v2.0**: A simple structure that stores message text in a single string field `content`.
-* **v3.0**: To support mixed content such as images and audio in addition to text-only dialogues, `text_content` and the `parts` array are primarily used.
+* **v3.0**: To support mixed content such as images and audio in addition to text-only dialogues, `text_content` (a
+  search-index string derived from `parts`) and the `parts` array were both present.
+* **v4.0**: `text_content` is removed entirely. `parts` is the sole source of truth for message body content. This
+  is a deliberate simplification, not a feature loss: `text_content` was never independent information — it was
+  always computed from `parts` — and carrying it in the export format allowed stale or attachment-polluted text to
+  be written and re-imported as if it were authoritative.
 
 ### 5.2. Automatic Normalization Rules by Import Parser
 
-In systems that interpret this format, to accept old `v2.0` format data while maintaining compatibility, the parser automatically converts (normalizes) the data into the `v3.0` structure using the following rules:
+Import parsers must accept `v2.0`, `v3.0`, and `v4.0` files and normalize all of them to the `v4.0` in-memory shape
+(`parts` only, no `text_content`) using the following rules:
 
-1. **`text_content` Fallback**:
-   If `text_content` is omitted in a message and `content` exists instead, the value of `content` is applied as the value of `text_content`.
-2. **Automatic Construction of the `parts` Array**:
-   If the `parts` array is undefined or empty, an array consisting of a single text part is automatically generated using the fallback `text_content` value as follows:
+1. **`parts` takes priority when present**:
+   If a message already has a non-empty `parts` array (v3.0 and v4.0 files), it is used as-is. Any `text_content`
+   field present in the raw file (v3.0) is ignored and discarded — it is not read, not trusted, and not carried
+   into the normalized result.
+2. **`content` fallback only when `parts` is absent**:
+   If `parts` is undefined or empty (v2.0 files only), a single text part is constructed from `content` instead:
 
    ```toml
    [[messages.parts]]
    type = "text"
-   text = "<value of text_content>"
+   text = "<value of content>"
    ```
+
+3. **`text_content` is never reconstructed on import.** Even for v2.0/v3.0 input, the normalized message object
+   contains only `parts` — no derived `text_content` field is added back.
 
 ---
 
 ## 6. Sample TOML Data
 
-Below is a sample of actual v3.0 data, consisting of a user message with an attached image and an assistant response with a reasoning process (thinking), along with generation parameters and telemetry metadata.
+Below is a sample of actual v4.0 data, consisting of a user message with an attached image and an assistant response with a reasoning process (thinking), along with generation parameters and telemetry metadata.
 
 ```toml
 [export_info]
-format_version = "3.0"
+format_version = "4.0"
 exported_at = "2026-06-25T14:30:00.000Z"
 
 [session]
@@ -258,7 +273,6 @@ models_used = ["gemini-1.5-pro"]
 [[messages]]
 id = "msg-00000001-1111-2222-3333-444455556666"
 role = "user"
-text_content = "Please describe this image."
 session_id = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
 user_id = "f4e3d2c1-b0a9-8f7e-6d5c-4b3a2f1e0d9c"
 created_at = "2026-06-25T14:28:30.000Z"
@@ -278,7 +292,6 @@ default_url = "data:image/png;base64,iVBORw0KGgoAAA..." # Base64 format data as 
 [[messages]]
 id = "msg-00000002-1111-2222-3333-444455556666"
 role = "assistant"
-text_content = "This is a landscape image depicting a blue sky and sea."
 session_id = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
 user_id = "f4e3d2c1-b0a9-8f7e-6d5c-4b3a2f1e0d9c"
 parent_chat_message_id = "msg-00000001-1111-2222-3333-444455556666"

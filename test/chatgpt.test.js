@@ -140,12 +140,14 @@ test("chatgpt toml export includes message ids and generation model slug", async
 	const [userMsg, assistantMsg] = parsed.messages;
 
 	assert.equal(userMsg.role, "user");
-	assert.equal(userMsg.text_content, "寝室向けには？");
+	assert.equal(userMsg.text_content, undefined);
+	assert.equal(userMsg.parts?.[0]?.text, "寝室向けには？");
 	assert.equal(userMsg.id, "user-2");
 
 	assert.equal(assistantMsg.role, "assistant");
+	assert.equal(assistantMsg.text_content, undefined);
 	assert.equal(
-		assistantMsg.text_content,
+		assistantMsg.parts?.find((p) => p.type === "text")?.text,
 		"寝室では時計表示と湿度確認を同時に見られる点が便利です。",
 	);
 	assert.equal(assistantMsg.id, "assistant-2");

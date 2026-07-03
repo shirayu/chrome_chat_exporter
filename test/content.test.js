@@ -291,7 +291,7 @@ test("shared Gemini page sample is exported", async () => {
 	);
 });
 
-test("toml export matches v3.0 specification", async () => {
+test("toml export matches v4.0 specification", async () => {
 	const tomlParser = require("smol-toml");
 	const html = fs.readFileSync(
 		path.join(__dirname, "fixtures/gemini-thoughts-toggle.html"),
@@ -313,7 +313,7 @@ test("toml export matches v3.0 specification", async () => {
 		parsed = tomlParser.parse(toml);
 	}, "TOML syntax should be valid");
 
-	assert.equal(parsed.export_info?.format_version, "3.0");
+	assert.equal(parsed.export_info?.format_version, "4.0");
 	assert.ok(parsed.export_info?.exported_at, "should contain exported_at");
 
 	assert.ok(parsed.session?.title, "should contain session title");
@@ -347,7 +347,7 @@ test("toml export matches v3.0 specification", async () => {
 
 	// User message assertions
 	assert.equal(userMsg.role, "user");
-	assert.equal(userMsg.text_content, "思考プロセスも保存したい");
+	assert.equal(userMsg.text_content, undefined);
 	assert.equal(userMsg.id, undefined);
 	assert.equal(userMsg.user_id, undefined);
 	assert.equal(userMsg.session_id, undefined);
@@ -359,10 +359,7 @@ test("toml export matches v3.0 specification", async () => {
 
 	// Assistant message assertions
 	assert.equal(assistantMsg.role, "assistant");
-	assert.equal(
-		assistantMsg.text_content,
-		"了解です。思考プロセスを含めてエクスポートできます。",
-	);
+	assert.equal(assistantMsg.text_content, undefined);
 	assert.equal(assistantMsg.id, undefined);
 	assert.equal(assistantMsg.user_id, undefined);
 	assert.equal(assistantMsg.session_id, undefined);
