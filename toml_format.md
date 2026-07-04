@@ -1,12 +1,12 @@
 
-# Chat TOML Export Format Specification (v4.0)
+# Chat TOML Export Format Specification (v5.0)
 
 ## 1. Overview
 
 This format is defined for integrating and migrating chat sessions, message histories, and workflow execution histories with other projects or tools.
 
-* **Export Version**: `"4.0"` (current, written by the exporter)
-* **Import-Supported Versions**: `"2.0"`, `"3.0"`, `"4.0"` (older formats are still accepted for reading)
+* **Export Version**: `"5.0"` (current, written by the exporter)
+* **Import-Supported Versions**: `"2.0"`, `"3.0"`, `"4.0"`, `"5.0"` (older formats are still accepted for reading)
 * **Data Characteristics**:
     * Represented in TOML format, but structurally maps 1:1 completely with JSON.
     * Supports multimodal content (text, image, audio, document, AI's thinking process, etc.).
@@ -14,6 +14,12 @@ This format is defined for integrating and migrating chat sessions, message hist
   search-index value derived from `parts` (see backend `extract_search_text()`), never an independent source of
   truth, and it was liable to carry attachment text that had leaked into it (see project bug history). `parts` is
   the sole source of truth for message body content in v4.0 and later.
+* **Change from v4.0**: `continuation_source_id` and `edited_source_id` on `[[messages]]` were renamed to
+  `continuation_source_message_id` and `edited_source_message_id` to spell out the referenced concept in full,
+  matching the semantic-types naming rule applied across the backend, DB, and workflow contracts. This is a field
+  rename only; the values and semantics are unchanged. Import parsers do not translate the old v4.0 field names —
+  values under the old names in imported v2.0–v4.0 files are dropped rather than carried forward (see
+  [5.2](#52-automatic-normalization-rules-by-import-parser)).
 
 ---
 
@@ -36,7 +42,7 @@ Administrative metadata related to the export.
 
 | Field Name | Type | Required/Optional | Description |
 | :--- | :--- | :--- | :--- |
-| `format_version` | String | **Required** | The version of the format. `"4.0"` for newly exported files; `"2.0"` or `"3.0"` may appear in files imported from older exports. |
+| `format_version` | String | **Required** | The version of the format. `"5.0"` for newly exported files; `"2.0"`, `"3.0"`, or `"4.0"` may appear in files imported from older exports. |
 | `exported_at` | String (ISO 8601) | **Required** | The date and time when the export was executed (e.g., `"2026-06-25T14:30:00.000Z"`). |
 
 ### 3.2. `[session]` (Session Information)
@@ -67,13 +73,13 @@ A list of messages that make up the conversation. Since this is an array of tabl
 | :--- | :--- | :--- | :--- |
 | `id` | String (UUIDv4) | Optional | Unique identifier of the message. |
 | `role` | String | **Required** | The role of the sender. One of `"user"`, `"assistant"`, or `"system"`. |
-| `content` | String | Deprecated, import-only (v2.0) | Body of the message. Only appears in v2.0 files being imported; never written by the v4.0 exporter. |
-| `parts` | Array (Objects) | **Required** (v4.0) | Multimodal content parts and sole source of truth for message body content. For details, see "4. Message Part Specification". |
+| `content` | String | Deprecated, import-only (v2.0) | Body of the message. Only appears in v2.0 files being imported; never written by the v5.0 exporter. |
+| `parts` | Array (Objects) | **Required** (v4.0+) | Multimodal content parts and sole source of truth for message body content. For details, see "4. Message Part Specification". |
 | `session_id` | String (UUIDv4) | Optional | ID of the chat session to which the message belongs. |
 | `user_id` | String (UUIDv4) | Optional | ID of the user who created the message. |
 | `parent_chat_message_id` | String (UUIDv4) | Optional | ID of the parent message (used for representing thread structures or conversation branches). |
-| `continuation_source_id` | String (UUIDv4) | Optional | ID of the message that was continued to generate this message. |
-| `edited_source_id` | String (UUIDv4) | Optional | ID of the original message that was edited to generate this message. |
+| `continuation_source_message_id` | String (UUIDv4) | Optional | ID of the message that was continued to generate this message. Named `continuation_source_id` before v5.0. |
+| `edited_source_message_id` | String (UUIDv4) | Optional | ID of the original message that was edited to generate this message. Named `edited_source_id` before v5.0. |
 | `created_at` | String (ISO 8601) | Optional | Date and time when the message was created. |
 | `generation_request` | Table | Optional | Snapshot of what was generated and with which settings. See [4.8. `generation_request` Field Specification](#48-generation_request-field-specification) for details. |
 | `generation_result` | Table | Optional | Summary of the generation result. See [4.9. `generation_result` Field Specification](#49-generation_result-field-specification) for details. |
@@ -214,9 +220,9 @@ Observed telemetry data of the generation process, including retrieval origins.
 
 ## 5. Compatibility and Normalization Rules by Version
 
-### 5.1. Differences between v2.0, v3.0, and v4.0
+### 5.1. Differences between v2.0, v3.0, v4.0, and v5.0
 
-There are structural differences in how the message body is represented.
+There are structural differences in how the message body is represented, plus one field-naming change in v5.0.
 
 * **v2.0**: A simple structure that stores message text in a single string field `content`.
 * **v3.0**: To support mixed content such as images and audio in addition to text-only dialogues, `text_content` (a
@@ -225,14 +231,18 @@ There are structural differences in how the message body is represented.
   is a deliberate simplification, not a feature loss: `text_content` was never independent information — it was
   always computed from `parts` — and carrying it in the export format allowed stale or attachment-polluted text to
   be written and re-imported as if it were authoritative.
+* **v5.0**: `continuation_source_id` and `edited_source_id` on `[[messages]]` are renamed to
+  `continuation_source_message_id` and `edited_source_message_id`. No structural change — same values, same
+  semantics, field name only.
 
 ### 5.2. Automatic Normalization Rules by Import Parser
 
-Import parsers must accept `v2.0`, `v3.0`, and `v4.0` files and normalize all of them to the `v4.0` in-memory shape
-(`parts` only, no `text_content`) using the following rules:
+Import parsers must accept `v2.0`, `v3.0`, `v4.0`, and `v5.0` files and normalize all of them to the `v5.0`
+in-memory shape (`parts` only, no `text_content`; `continuation_source_message_id` / `edited_source_message_id`
+field names) using the following rules:
 
 1. **`parts` takes priority when present**:
-   If a message already has a non-empty `parts` array (v3.0 and v4.0 files), it is used as-is. Any `text_content`
+   If a message already has a non-empty `parts` array (v3.0 and later), it is used as-is. Any `text_content`
    field present in the raw file (v3.0) is ignored and discarded — it is not read, not trusted, and not carried
    into the normalized result.
 2. **`content` fallback only when `parts` is absent**:
@@ -246,16 +256,19 @@ Import parsers must accept `v2.0`, `v3.0`, and `v4.0` files and normalize all of
 
 3. **`text_content` is never reconstructed on import.** Even for v2.0/v3.0 input, the normalized message object
    contains only `parts` — no derived `text_content` field is added back.
+4. **Pre-v5.0 field names are not translated.** `continuation_source_id` / `edited_source_id` values present in
+   imported v2.0–v4.0 files are dropped rather than renamed into `continuation_source_message_id` /
+   `edited_source_message_id` — there is no compatibility mapping between the old and new field names.
 
 ---
 
 ## 6. Sample TOML Data
 
-Below is a sample of actual v4.0 data, consisting of a user message with an attached image and an assistant response with a reasoning process (thinking), along with generation parameters and telemetry metadata.
+Below is a sample of actual v5.0 data, consisting of a user message with an attached image and an assistant response with a reasoning process (thinking), along with generation parameters and telemetry metadata.
 
 ```toml
 [export_info]
-format_version = "4.0"
+format_version = "5.0"
 exported_at = "2026-06-25T14:30:00.000Z"
 
 [session]

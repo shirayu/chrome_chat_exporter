@@ -740,7 +740,7 @@
 
 		const tomlData = {
 			export_info: {
-				format_version: "4.0",
+				format_version: "5.0",
 				exported_at: now.toISOString(),
 			},
 			session: {

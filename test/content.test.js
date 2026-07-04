@@ -291,7 +291,7 @@ test("shared Gemini page sample is exported", async () => {
 	);
 });
 
-test("toml export matches v4.0 specification", async () => {
+test("toml export matches v5.0 specification", async () => {
 	const tomlParser = require("smol-toml");
 	const html = fs.readFileSync(
 		path.join(__dirname, "fixtures/gemini-thoughts-toggle.html"),
@@ -313,7 +313,7 @@ test("toml export matches v4.0 specification", async () => {
 		parsed = tomlParser.parse(toml);
 	}, "TOML syntax should be valid");
 
-	assert.equal(parsed.export_info?.format_version, "4.0");
+	assert.equal(parsed.export_info?.format_version, "5.0");
 	assert.ok(parsed.export_info?.exported_at, "should contain exported_at");
 
 	assert.ok(parsed.session?.title, "should contain session title");
