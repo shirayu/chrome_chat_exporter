@@ -206,7 +206,13 @@
 							node.childNodes[0].tagName?.toLowerCase() === "strong");
 
 					const content = Array.from(node.childNodes)
-						.map((child) => renderInline(child, { ...context, allowMarkdown }))
+						.map((child) =>
+							renderInline(child, {
+								...context,
+								allowMarkdown,
+								inlineBreak: "newline",
+							}),
+						)
 						.join("")
 						.trim();
 

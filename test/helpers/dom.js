@@ -169,7 +169,7 @@ function parseSelector(selector) {
 		.filter(Boolean)
 		.map((part) => {
 			if (part.startsWith(".")) {
-				return { className: part.slice(1) };
+				return { className: part.slice(1).replace(/\\(.)/g, "$1") };
 			}
 			const attrMatch = part.match(
 				/^\[([\w:-]+)(?:=(?:"([^"]*)"|'([^']*)'|([^\]]+)))?\]$/,

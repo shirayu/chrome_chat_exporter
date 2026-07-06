@@ -19,6 +19,36 @@ function setupClaude(fixtureName) {
 	return messageListener;
 }
 
+function readFixtureRoot(fixtureName) {
+	const html = fs.readFileSync(
+		path.join(__dirname, "fixtures", fixtureName),
+		"utf8",
+	);
+	return parseHtml(html);
+}
+
+function setupClaudeThoughtsToggle(root, expandedRoot) {
+	const collapsedRow = root.querySelector(".row-start-1");
+	const expandedRow = expandedRoot.querySelector(".row-start-1");
+	assert.ok(collapsedRow, "collapsed thoughts row not found");
+	assert.ok(expandedRow, "expanded thoughts row not found");
+
+	const expandedChildren = expandedRow.childNodes.map((node) =>
+		node.cloneNode(true),
+	);
+
+	const toggleButton = root.querySelector(".group\\/status");
+	assert.ok(toggleButton, "thoughts toggle button not found");
+
+	toggleButton.onclick = () => {
+		toggleButton.setAttribute("aria-expanded", "true");
+		collapsedRow.childNodes = [];
+		expandedChildren.forEach((node) => {
+			collapsedRow.appendChild(node.cloneNode(true));
+		});
+	};
+}
+
 test("claude simple turn is exported", async () => {
 	const messageListener = setupClaude("claude-simple.html");
 	const response = await requestExport(messageListener, {
@@ -161,5 +191,89 @@ test("claude toml export uses Claude label", async () => {
 			toml,
 		),
 		"toml session title should be Claude Export with date",
+	);
+});
+
+test("claude expanded thoughts are separated from the model answer", async () => {
+	const messageListener = setupClaude("claude-thoughts-expanded.html");
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+		includeThoughts: true,
+	});
+
+	assert.ok(response?.ok, "export should succeed");
+	assert.equal(response.data.turns.length, 1);
+	assert.equal(
+		response.data.turns[0].thoughts,
+		"ダミーの思考テキスト1行目です。\n\nダミーの思考テキスト2行目です。",
+	);
+	assert.equal(response.data.turns[0].model, "ダミーの回答本文です。");
+	assert.ok(
+		!response.data.turns[0].model.includes("ダミーの思考テキスト"),
+		"model text should not include thoughts content",
+	);
+	assert.ok(
+		response.data.markdown.includes("### Thought Process"),
+		"markdown should include thoughts heading when includeThoughts is true",
+	);
+	assert.ok(response.data.markdown.includes("ダミーの思考テキスト1行目です。"));
+});
+
+test("claude thoughts are omitted from markdown when includeThoughts is false", async () => {
+	const messageListener = setupClaude("claude-thoughts-expanded.html");
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+		includeThoughts: false,
+	});
+
+	assert.ok(response?.ok);
+	assert.ok(
+		!response.data.markdown.includes("### Thought Process"),
+		"markdown should not include thoughts heading when includeThoughts is false",
+	);
+	assert.equal(response.data.turns[0].model, "ダミーの回答本文です。");
+});
+
+test("claude collapsed thoughts are expanded for export", async () => {
+	const root = readFixtureRoot("claude-thoughts-collapsed.html");
+	const expandedRoot = readFixtureRoot("claude-thoughts-expanded.html");
+	setupClaudeThoughtsToggle(root, expandedRoot);
+	const messageListener = setupContentScript(root, { hostname: "claude.ai" });
+
+	assert.equal(root.querySelector("[data-timeline-text]"), null);
+
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+		includeThoughts: true,
+	});
+
+	assert.ok(response?.ok, "export should succeed");
+	assert.equal(
+		response.data.turns[0].thoughts,
+		"ダミーの思考テキスト1行目です。\n\nダミーの思考テキスト2行目です。",
+	);
+	assert.equal(response.data.turns[0].model, "ダミーの回答本文です。");
+});
+
+test("claude simple turn without thoughts has empty thoughts field", async () => {
+	const messageListener = setupClaude("claude-simple.html");
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "current",
+		markdownStyle: "gemini",
+		includeThoughts: true,
+	});
+
+	assert.ok(response?.ok);
+	assert.equal(response.data.turns[0].thoughts, "");
+	assert.ok(
+		!response.data.markdown.includes("### Thought Process"),
+		"markdown should not include thoughts heading when there are none",
 	);
 });

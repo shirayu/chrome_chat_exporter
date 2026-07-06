@@ -28,6 +28,8 @@
 		userMessage: "[data-testid='user-message']",
 		modelResponse: ".font-claude-response",
 		modelMarkdown: ".standard-markdown, .progressive-markdown",
+		thoughtsToggleButton: ".group\\/status",
+		thoughtsTimelineText: "[data-timeline-text]",
 	};
 
 	const CHATGPT_SELECTORS = {
@@ -823,6 +825,106 @@
 		return lines.join("\n");
 	}
 
+	function getClaudeThoughtsTimelineNodes(responseNode) {
+		return Array.from(
+			responseNode.querySelectorAll(CLAUDE_SELECTORS.thoughtsTimelineText),
+		).filter(
+			(node) =>
+				node.querySelectorAll(CLAUDE_SELECTORS.modelMarkdown).length > 0,
+		);
+	}
+
+	function hasExpandedClaudeThoughts(responseNode) {
+		return getClaudeThoughtsTimelineNodes(responseNode).length > 0;
+	}
+
+	async function ensureClaudeThoughtsExpanded(responseNode) {
+		if (hasExpandedClaudeThoughts(responseNode)) {
+			return false;
+		}
+
+		const toggleButton = responseNode.querySelector(
+			CLAUDE_SELECTORS.thoughtsToggleButton,
+		);
+		if (!toggleButton || typeof toggleButton.click !== "function") {
+			return false;
+		}
+		if (toggleButton.getAttribute("aria-expanded") === "true") {
+			return false;
+		}
+
+		toggleButton.click();
+
+		for (let i = 0; i < 10; i += 1) {
+			if (hasExpandedClaudeThoughts(responseNode)) {
+				return true;
+			}
+			await sleep(50);
+		}
+
+		return false;
+	}
+
+	async function restoreClaudeThoughtsState(responseNode, shouldCollapse) {
+		if (!shouldCollapse) return;
+		const toggleButton = responseNode.querySelector(
+			CLAUDE_SELECTORS.thoughtsToggleButton,
+		);
+		if (!toggleButton || typeof toggleButton.click !== "function") {
+			return;
+		}
+		toggleButton.click();
+	}
+
+	function getClaudeThoughts(responseNode) {
+		const timelineNodes = getClaudeThoughtsTimelineNodes(responseNode);
+		if (timelineNodes.length === 0) return "";
+
+		const chunks = [];
+		for (const timelineNode of timelineNodes) {
+			const markdownNodes = Array.from(
+				timelineNode.querySelectorAll(CLAUDE_SELECTORS.modelMarkdown),
+			);
+			for (const node of markdownNodes) {
+				const text = markdown.extractMarkdownFromNode(node);
+				if (text?.trim()) {
+					chunks.push(cleanText(text));
+				}
+			}
+		}
+		if (chunks.length === 0) return "";
+		return cleanText(chunks.join("\n\n"));
+	}
+
+	function getClaudeThoughtsHtml(responseNode) {
+		const timelineNodes = getClaudeThoughtsTimelineNodes(responseNode);
+		if (timelineNodes.length === 0) return "";
+
+		const chunks = [];
+		for (const timelineNode of timelineNodes) {
+			const markdownNodes = Array.from(
+				timelineNode.querySelectorAll(CLAUDE_SELECTORS.modelMarkdown),
+			);
+			for (const node of markdownNodes) {
+				const html = node.innerHTML.trim();
+				if (html) {
+					chunks.push(html);
+				}
+			}
+		}
+		return chunks.join("\n");
+	}
+
+	function getClaudeModelMarkdownNodes(responseNode) {
+		const timelineNodes = getClaudeThoughtsTimelineNodes(responseNode);
+		return Array.from(
+			responseNode.querySelectorAll(CLAUDE_SELECTORS.modelMarkdown),
+		).filter(
+			(node) =>
+				!timelineNodes.some((timelineNode) => timelineNode.contains(node)),
+		);
+	}
+
 	async function extractClaude(
 		scope,
 		turnIndex,
@@ -841,37 +943,48 @@
 			pairs = allTurnPairs;
 		}
 
-		const turns = pairs.map(({ userNode, responseNode }) => {
+		const turns = [];
+		for (const { userNode, responseNode } of pairs) {
 			const userText = getVisibleText(userNode);
 			let modelText = "";
 			let modelHtmlStr = "";
+			let thoughtsText = "";
+			let thoughtsHtmlStr = "";
 			if (responseNode) {
-				const markdownNodes = Array.from(
-					responseNode.querySelectorAll(CLAUDE_SELECTORS.modelMarkdown),
-				);
-				for (const node of markdownNodes) {
-					const text = markdown.extractMarkdownFromNode(node);
-					if (text?.trim()) {
-						modelText = cleanText(text);
-						modelHtmlStr = node.innerHTML.trim();
-						break;
+				const shouldRestoreThoughts = includeThoughts
+					? await ensureClaudeThoughtsExpanded(responseNode)
+					: false;
+				try {
+					thoughtsText = getClaudeThoughts(responseNode);
+					thoughtsHtmlStr = getClaudeThoughtsHtml(responseNode);
+
+					const markdownNodes = getClaudeModelMarkdownNodes(responseNode);
+					for (const node of markdownNodes) {
+						const text = markdown.extractMarkdownFromNode(node);
+						if (text?.trim()) {
+							modelText = cleanText(text);
+							modelHtmlStr = node.innerHTML.trim();
+							break;
+						}
 					}
-				}
-				if (!modelText) {
-					modelText = cleanText(
-						responseNode.innerText || responseNode.textContent || "",
-					);
-					modelHtmlStr = responseNode.innerHTML.trim();
+					if (!modelText) {
+						modelText = cleanText(
+							responseNode.innerText || responseNode.textContent || "",
+						);
+						modelHtmlStr = responseNode.innerHTML.trim();
+					}
+				} finally {
+					await restoreClaudeThoughtsState(responseNode, shouldRestoreThoughts);
 				}
 			}
-			return {
+			turns.push({
 				user: userText,
-				thoughts: "",
-				thoughtsHtml: "",
+				thoughts: thoughtsText,
+				thoughtsHtml: thoughtsHtmlStr,
 				model: modelText,
 				modelHtml: modelHtmlStr,
-			};
-		});
+			});
+		}
 
 		return {
 			turns,
