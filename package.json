@@ -18,10 +18,10 @@
 	},
 	"version": "1.0.0",
 	"devDependencies": {
-		"@biomejs/biome": "2.5.3",
-		"markdownlint-cli2": "^0.23.0",
+		"@biomejs/biome": "2.5.5",
+		"markdownlint-cli2": "^0.23.2",
 		"npm-run-all2": "^9.0.2",
-		"smol-toml": "^1.7.0"
+		"smol-toml": "^1.7.1"
 	},
 	"engines": {
 		"npm": "Use pnpm instead of npm!"
