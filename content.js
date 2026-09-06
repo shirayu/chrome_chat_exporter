@@ -619,6 +619,20 @@
 		return buildTurnHeadingStyleMarkdown(turns, includeThoughts);
 	}
 
+	function generateMessageId() {
+		if (
+			typeof crypto !== "undefined" &&
+			typeof crypto.randomUUID === "function"
+		) {
+			return crypto.randomUUID();
+		}
+		return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+			const r = (Math.random() * 16) | 0;
+			const v = c === "x" ? r : (r & 0x3) | 0x8;
+			return v.toString(16);
+		});
+	}
+
 	function toTomlValue(str) {
 		if (typeof str !== "string") return '""';
 		if (str.includes("\n")) {
@@ -683,11 +697,13 @@
 
 		turns.forEach((turn) => {
 			const userMsgId =
-				SITE === "chatgpt" && turn.userMessageId ? turn.userMessageId : null;
+				SITE === "chatgpt" && turn.userMessageId
+					? turn.userMessageId
+					: generateMessageId();
 			const assistantMsgId =
 				SITE === "chatgpt" && turn.assistantMessageId
 					? turn.assistantMessageId
-					: null;
+					: generateMessageId();
 
 			const userMsg = {
 				role: "user",

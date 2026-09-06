@@ -348,7 +348,7 @@ test("toml export matches v5.0 specification", async () => {
 	// User message assertions
 	assert.equal(userMsg.role, "user");
 	assert.equal(userMsg.text_content, undefined);
-	assert.equal(userMsg.id, undefined);
+	assert.ok(userMsg.id, "user message should have a generated id");
 	assert.equal(userMsg.user_id, undefined);
 	assert.equal(userMsg.session_id, undefined);
 	assert.equal(userMsg.parent_chat_message_id, undefined);
@@ -360,10 +360,10 @@ test("toml export matches v5.0 specification", async () => {
 	// Assistant message assertions
 	assert.equal(assistantMsg.role, "assistant");
 	assert.equal(assistantMsg.text_content, undefined);
-	assert.equal(assistantMsg.id, undefined);
+	assert.ok(assistantMsg.id, "assistant message should have a generated id");
 	assert.equal(assistantMsg.user_id, undefined);
 	assert.equal(assistantMsg.session_id, undefined);
-	assert.equal(assistantMsg.parent_chat_message_id, undefined);
+	assert.equal(assistantMsg.parent_chat_message_id, userMsg.id);
 	assert.ok(
 		Array.isArray(assistantMsg.parts),
 		"assistant parts should be an array",
