@@ -1,11 +1,14 @@
 // Runs downloads outside the popup so they survive the popup closing
 // (e.g. when the "Save As" dialog steals focus).
+
+// Chunked to keep String.fromCharCode's argument count below the engine limit.
+const BASE64_CHUNK_SIZE = 0x8000;
+
 function toBase64(text) {
 	const bytes = new TextEncoder().encode(text);
-	const chunkSize = 0x8000;
 	let binary = "";
-	for (let i = 0; i < bytes.length; i += chunkSize) {
-		binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+	for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
+		binary += String.fromCharCode(...bytes.subarray(i, i + BASE64_CHUNK_SIZE));
 	}
 	return btoa(binary);
 }
