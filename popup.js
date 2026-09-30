@@ -291,9 +291,6 @@ async function requestExport(format, output) {
 			extension = "md";
 			mimeType = "text/markdown";
 		}
-		const blob = new Blob([data], { type: mimeType });
-		const url = URL.createObjectURL(blob);
-
 		const targetOutput = output === "download" ? "download" : "clipboard";
 		if (targetOutput === "clipboard") {
 			await navigator.clipboard.writeText(data);
@@ -309,7 +306,15 @@ async function requestExport(format, output) {
 		const toolname = matched ? matched.toolname : "chat";
 		const filename = buildFilename(toolname, scopeLabel, extension);
 
-		await chrome.downloads.download({ url, filename, saveAs: true });
+		const result = await chrome.runtime.sendMessage({
+			type: "chat-export-download",
+			data,
+			mimeType,
+			filename,
+		});
+		if (result && !result.ok) {
+			throw new Error(result.error);
+		}
 		setStatus(chrome.i18n.getMessage("statusDownloadStarted"), false);
 		closePopupIfEnabled();
 	} catch (_error) {

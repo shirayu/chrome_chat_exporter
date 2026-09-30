@@ -10,6 +10,9 @@
 		"https://chatgpt.com/*"
 	],
 	"default_locale": "ja",
+	"background": {
+		"service_worker": "background.js"
+	},
 	"action": {
 		"default_title": "__MSG_extName__",
 		"default_popup": "popup.html"
