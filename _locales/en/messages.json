@@ -35,6 +35,9 @@
 	"statusExportFailed": {
 		"message": "Export failed."
 	},
+	"statusNoMessages": {
+		"message": "No messages could be extracted."
+	},
 	"scopeCurrent": {
 		"message": "Latest"
 	},

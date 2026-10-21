@@ -274,6 +274,10 @@ async function requestExport(format, output) {
 		}
 
 		const payload = response.data;
+		if (!payload?.turns || payload.turns.length === 0) {
+			setStatus(chrome.i18n.getMessage("statusNoMessages"), true);
+			return;
+		}
 		let data = "";
 		let extension = "";
 		let mimeType = "";

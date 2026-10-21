@@ -130,6 +130,16 @@ class ElementNode {
 		return matches;
 	}
 
+	closest(selector) {
+		const matcher = createSelectorMatcher(selector);
+		let current = this;
+		while (current && current.nodeType === global.Node.ELEMENT_NODE) {
+			if (matcher(current)) return current;
+			current = current.parentNode;
+		}
+		return null;
+	}
+
 	querySelector(selector) {
 		const matcher = createSelectorMatcher(selector);
 		let found = null;

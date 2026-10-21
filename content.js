@@ -38,6 +38,11 @@
 		userMessage: '[data-message-author-role="user"]',
 		assistantMessage: '[data-message-author-role="assistant"]',
 		modelMarkdown: ".markdown",
+		keyedTurn: "[data-turn-key]",
+		keyedUnit: "[data-chatgpt-search-unit-key]",
+		keyedUserBubble: "[data-user-message-bubble]",
+		keyedModelMarkdown: '[data-markdown-text-style="assistant-message"]',
+		keyedScrollRoot: "[data-app-action-timeline-scroll]",
 	};
 
 	const markdown = window.__geminiMarkdown || {};
@@ -262,7 +267,7 @@
 		let modelHtmlStr = "";
 		if (responseNode) {
 			const markdownNode = responseNode.querySelector(
-				CHATGPT_SELECTORS.modelMarkdown,
+				`${CHATGPT_SELECTORS.modelMarkdown}, ${CHATGPT_SELECTORS.keyedModelMarkdown}`,
 			);
 			if (markdownNode) {
 				modelText = cleanText(markdown.extractMarkdownFromNode(markdownNode));
@@ -276,9 +281,80 @@
 		return { modelText, modelHtmlStr };
 	}
 
+	const keyedTurnOrders = new WeakMap();
+
+	// 新DOM: [data-turn-key] が user/assistant のペアを内包する
+	function captureChatGptKeyedTurns(records) {
+		const keyedNodes = Array.from(
+			getChatGptQueryScope().querySelectorAll(CHATGPT_SELECTORS.keyedTurn),
+		);
+		keyedNodes.forEach((keyedNode, order) => {
+			// fallback-turn-N は仮想化で振り直され得るため、安定した turn-key の初出順で採番する
+			const turnKey =
+				keyedNode.getAttribute("data-turn-key") || `order-${order}`;
+			let keyOrder = keyedTurnOrders.get(records);
+			if (!keyOrder) {
+				keyOrder = new Map();
+				keyedTurnOrders.set(records, keyOrder);
+			}
+			if (!keyOrder.has(turnKey)) keyOrder.set(turnKey, keyOrder.size);
+			const base = keyOrder.get(turnKey);
+
+			const units = Array.from(
+				keyedNode.querySelectorAll(CHATGPT_SELECTORS.keyedUnit),
+			);
+			const unitsOf = (kind) =>
+				units.filter((unit) =>
+					unit
+						.getAttribute("data-chatgpt-search-unit-key")
+						.endsWith(`:${kind}`),
+				);
+			const userUnit = unitsOf("user")[0];
+			if (userUnit) {
+				const userNode =
+					userUnit.querySelector(CHATGPT_SELECTORS.keyedUserBubble) || userUnit;
+				const userText = getVisibleText(userNode);
+				if (userText) {
+					const record = records.get(base * 2) || { index: base * 2 };
+					record.role = "user";
+					record.user = userText;
+					const messageId = (
+						userUnit.getAttribute("data-chatgpt-search-message-ids") || ""
+					)
+						.split(/\s+/)
+						.find(Boolean);
+					if (messageId) record.userMessageId = messageId;
+					records.set(base * 2, record);
+				}
+			}
+
+			const assistantUnits = unitsOf("assistant");
+			const assistantUnit = assistantUnits[assistantUnits.length - 1];
+			if (assistantUnit) {
+				const { modelText, modelHtmlStr } = extractChatGptModel(assistantUnit);
+				if (modelText || modelHtmlStr) {
+					const record = records.get(base * 2 + 1) || {
+						index: base * 2 + 1,
+					};
+					record.role = "assistant";
+					record.model = modelText;
+					record.modelHtml = modelHtmlStr;
+					const messageId = (
+						assistantUnit.getAttribute("data-chatgpt-search-message-ids") || ""
+					)
+						.split(/\s+/)
+						.find(Boolean);
+					if (messageId) record.assistantMessageId = messageId;
+					records.set(base * 2 + 1, record);
+				}
+			}
+		});
+	}
+
 	function captureChatGptVisibleTurns(records) {
+		captureChatGptKeyedTurns(records);
 		const turnNodes = Array.from(
-			document.querySelectorAll(CHATGPT_SELECTORS.turn),
+			getChatGptQueryScope().querySelectorAll(CHATGPT_SELECTORS.turn),
 		);
 
 		for (const turnNode of turnNodes) {
@@ -368,11 +444,31 @@
 		return turns;
 	}
 
+	function isChatGptRootVisible(root) {
+		if (root.closest?.("[hidden], [inert], [aria-hidden='true']")) return false;
+		return !(Number.isFinite(root.clientHeight) && root.clientHeight <= 0);
+	}
+
+	// 取得対象は表示中のスクロール領域の内側だけに限定する
+	function getChatGptQueryScope() {
+		const root = getChatGptScrollRoot();
+		return root?.querySelectorAll &&
+			root !== document.documentElement &&
+			root !== document.scrollingElement
+			? root
+			: document;
+	}
+
 	function getChatGptScrollRoot() {
 		const roots = Array.from(
-			document.querySelectorAll(CHATGPT_SELECTORS.scrollRoot),
+			document.querySelectorAll(
+				`${CHATGPT_SELECTORS.scrollRoot}, ${CHATGPT_SELECTORS.keyedScrollRoot}`,
+			),
 		);
-		if (roots.length > 0) return roots[0];
+		if (roots.length > 0) {
+			// 前の会話のDOMが非表示で残る場合があるため、表示中のものを優先する
+			return roots.find(isChatGptRootVisible) || roots[0];
+		}
 		return document.scrollingElement || document.documentElement || null;
 	}
 
@@ -401,42 +497,51 @@
 
 	async function collectChatGptTurnRecords({ scroll = true } = {}) {
 		const records = new Map();
-		captureChatGptVisibleTurns(records);
 
 		const scrollRoot = getChatGptScrollRoot();
 		const scrollHeight = getScrollHeight(scrollRoot);
 		const clientHeight = getClientHeight(scrollRoot);
+		console.debug("[Chat Export] chatgpt scroll root", {
+			scroll,
+			tag: scrollRoot?.tagName,
+			scrollHeight,
+			clientHeight,
+		});
 		if (
 			!scroll ||
 			!scrollRoot ||
 			scrollHeight <= clientHeight ||
 			clientHeight <= 0
 		) {
+			captureChatGptVisibleTurns(records);
 			return buildChatGptTurnRecords(records);
 		}
 
+		// 初出順で採番するため、先頭へ戻ってから上→下の順に収集する
 		const originalTop = getScrollTop(scrollRoot);
 		const step = Math.max(320, Math.floor(clientHeight * 0.8));
 		try {
-			setScrollTop(scrollRoot, 0);
-			await sleep(120);
+			// 仮想リストの高さ再計測で位置が戻されることがあるため、先頭で安定するまで繰り返す
+			for (let i = 0; i < 30; i += 1) {
+				setScrollTop(scrollRoot, 0);
+				await sleep(150);
+				if (getScrollTop(scrollRoot) <= 1) break;
+			}
+			await sleep(150);
 			captureChatGptVisibleTurns(records);
 
-			let previousTop = -1;
-			for (let i = 0; i < 120; i += 1) {
+			let stalled = 0;
+			for (let i = 0; i < 400; i += 1) {
 				const currentTop = getScrollTop(scrollRoot);
-				if (currentTop === previousTop) break;
-				previousTop = currentTop;
-				const nextTop = Math.min(
-					currentTop + step,
-					getScrollHeight(scrollRoot) - getClientHeight(scrollRoot),
-				);
-				setScrollTop(scrollRoot, nextTop);
-				await sleep(120);
+				const maxTop =
+					getScrollHeight(scrollRoot) - getClientHeight(scrollRoot);
+				if (currentTop >= maxTop - 2) break;
+				setScrollTop(scrollRoot, Math.min(currentTop + step, maxTop));
+				await sleep(150);
 				captureChatGptVisibleTurns(records);
-				if (nextTop <= currentTop || nextTop >= getScrollHeight(scrollRoot)) {
-					break;
-				}
+				// 位置が進まない状態が続いたら打ち切る
+				stalled = getScrollTop(scrollRoot) > currentTop + 1 ? 0 : stalled + 1;
+				if (stalled >= 5) break;
 			}
 		} finally {
 			setScrollTop(scrollRoot, originalTop);

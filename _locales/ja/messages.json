@@ -35,6 +35,9 @@
 	"statusExportFailed": {
 		"message": "エクスポートに失敗しました。"
 	},
+	"statusNoMessages": {
+		"message": "メッセージが1件も取得できませんでした。"
+	},
 	"scopeCurrent": {
 		"message": "最新会話"
 	},

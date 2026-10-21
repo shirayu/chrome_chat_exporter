@@ -187,3 +187,34 @@ test("chatgpt toml export with scope=all includes model slug in generation_reque
 	assert.equal(assistantMsg2.parent_chat_message_id, "user-2");
 	assert.equal(assistantMsg2.generation_request, undefined);
 });
+
+test("chatgpt keyed-turn layout exports paired turns", async () => {
+	const messageListener = setupChatGpt("chatgpt-keyed-turns.html");
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "all",
+		markdownStyle: "gemini",
+	});
+
+	assert.ok(response?.ok, "export should succeed");
+	assert.equal(response.data.turns.length, 2);
+	assert.equal(response.data.turns[0].user, "サンプル質問その1");
+	assert.ok(response.data.turns[0].model.includes("サンプル回答その1"));
+	assert.ok(!response.data.turns[0].model.includes("ChatGPT の発言"));
+	assert.equal(response.data.turns[1].user, "サンプル質問その2");
+});
+
+test("chatgpt keyed-turn layout ignores a hidden stale conversation", async () => {
+	const messageListener = setupChatGpt("chatgpt-keyed-turns-stale-root.html");
+	const response = await requestExport(messageListener, {
+		type: "EXPORT_GEMINI_CHAT",
+		scope: "all",
+		markdownStyle: "gemini",
+	});
+
+	assert.ok(response?.ok, "export should succeed");
+	assert.equal(response.data.turns.length, 3);
+	assert.equal(response.data.turns[0].user, "サンプル質問その1");
+	assert.equal(response.data.turns[2].user, "サンプル質問その3");
+	assert.ok(!response.data.markdown.includes("前の会話"));
+});
