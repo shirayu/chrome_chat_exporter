@@ -4,6 +4,7 @@
 		"includes": [
 			"**",
 			"!test/fixtures/gemini-svm-response.html",
+			"!**/*.md",
 			"!tmp",
 			"!node_modules"
 		]

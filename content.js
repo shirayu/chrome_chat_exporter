@@ -65,7 +65,7 @@
 		hiddenNodes.forEach((hiddenNode) => {
 			hiddenNode.remove();
 		});
-		return cleanText(clone.innerText || clone.textContent || "");
+		return cleanText(clone.textContent || clone.textContent || "");
 	}
 
 	function getUserText(container) {
@@ -121,12 +121,12 @@
 		}
 		const fallback = container.querySelector(SELECTORS.modelFallback);
 		if (!fallback) return "";
-		return cleanText(fallback.innerText || fallback.textContent || "");
+		return cleanText(fallback.textContent || fallback.textContent || "");
 	}
 
 	if (!markdown.extractMarkdownFromNode) {
 		markdown.extractMarkdownFromNode = (node) =>
-			node.innerText || node.textContent || "";
+			node.textContent || node.textContent || "";
 	}
 
 	function getModelThoughtsHtml(container) {
@@ -1090,7 +1090,7 @@
 					}
 					if (!modelText) {
 						modelText = cleanText(
-							responseNode.innerText || responseNode.textContent || "",
+							responseNode.textContent || responseNode.textContent || "",
 						);
 						modelHtmlStr = responseNode.innerHTML.trim();
 					}

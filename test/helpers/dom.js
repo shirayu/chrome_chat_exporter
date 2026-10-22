@@ -157,7 +157,7 @@ class ElementNode {
 	}
 
 	get innerText() {
-		return this.childNodes.map((child) => child.innerText || "").join("");
+		return this.childNodes.map((child) => child.textContent || "").join("");
 	}
 
 	get innerHTML() {

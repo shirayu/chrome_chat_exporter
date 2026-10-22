@@ -16,18 +16,18 @@ The current supported websites are **Gemini**, **Claude**, and **ChatGPT**.
 
 - Scope:
     - Latest: export only the latest turn.
-    - All: export all visible turns.
-    - Select: choose a specific turn from a dropdown (label shows the first 20 characters).
+        - All: export all visible turns.
+        - Select: choose a specific turn from a dropdown (label shows the first 20 characters).
 - Output:
     - Clipboard (default)
-    - Download
+        - Download
 - Format:
     - Markdown (default)
-    - HTML
+        - HTML
 - Markdown style:
     - Role Numbering Style (default): `## Turn 1-1: User` / `## Turn 1-2: Gemini`
-    - Turn Heading Style: `## Turn 1` + `### User` / `### Gemini`
-    - The selected style is saved in popup UI.
+        - Turn Heading Style: `## Turn 1` + `### User` / `### Gemini`
+        - The selected style is saved in popup UI.
 
 ## Notes
 

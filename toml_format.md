@@ -1,20 +1,19 @@
-
 # Chat TOML Export Format Specification (v5.0)
 
 ## 1. Overview
 
 This format is defined for integrating and migrating chat sessions, message histories, and workflow execution histories with other projects or tools.
 
-* **Export Version**: `"5.0"` (current, written by the exporter)
-* **Import-Supported Versions**: `"2.0"`, `"3.0"`, `"4.0"`, `"5.0"` (older formats are still accepted for reading)
-* **Data Characteristics**:
-    * Represented in TOML format, but structurally maps 1:1 completely with JSON.
-    * Supports multimodal content (text, image, audio, document, AI's thinking process, etc.).
-* **Change from v3.0**: The `text_content` field has been removed from `[[messages]]`. `text_content` was a
+- **Export Version**: `"5.0"` (current, written by the exporter)
+- **Import-Supported Versions**: `"2.0"`, `"3.0"`, `"4.0"`, `"5.0"` (older formats are still accepted for reading)
+- **Data Characteristics**:
+    - Represented in TOML format, but structurally maps 1:1 completely with JSON.
+        - Supports multimodal content (text, image, audio, document, AI's thinking process, etc.).
+- **Change from v3.0**: The `text_content` field has been removed from `[[messages]]`. `text_content` was a
   search-index value derived from `parts` (see backend `extract_search_text()`), never an independent source of
   truth, and it was liable to carry attachment text that had leaked into it (see project bug history). `parts` is
   the sole source of truth for message body content in v4.0 and later.
-* **Change from v4.0**: `continuation_source_id` and `edited_source_id` on `[[messages]]` were renamed to
+- **Change from v4.0**: `continuation_source_id` and `edited_source_id` on `[[messages]]` were renamed to
   `continuation_source_message_id` and `edited_source_message_id` to spell out the referenced concept in full,
   matching the semantic-types naming rule applied across the backend, DB, and workflow contracts. This is a field
   rename only; the values and semantics are unchanged. Import parsers do not translate the old v4.0 field names —
@@ -40,59 +39,59 @@ An exported TOML file primarily consists of the following four sections.
 
 Administrative metadata related to the export.
 
-| Field Name | Type | Required/Optional | Description |
-| :--- | :--- | :--- | :--- |
-| `format_version` | String | **Required** | The version of the format. `"5.0"` for newly exported files; `"2.0"`, `"3.0"`, or `"4.0"` may appear in files imported from older exports. |
-| `exported_at` | String (ISO 8601) | **Required** | The date and time when the export was executed (e.g., `"2026-06-25T14:30:00.000Z"`). |
+| Field Name       | Type              | Required/Optional | Description                                                                                                                                |
+| :--------------- | :---------------- | :---------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| `format_version` | String            | **Required**      | The version of the format. `"5.0"` for newly exported files; `"2.0"`, `"3.0"`, or `"4.0"` may appear in files imported from older exports. |
+| `exported_at`    | String (ISO 8601) | **Required**      | The date and time when the export was executed (e.g., `"2026-06-25T14:30:00.000Z"`).                                                       |
 
 ### 3.2. `[session]` (Session Information)
 
 Basic metadata of the chat session itself.
 
-| Field Name | Type | Required/Optional | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | String (UUIDv4) | Optional | Unique identifier of the session. |
-| `title` | String | **Required** | Title of the chat session. |
-| `user_id` | String (UUIDv4) | Optional | ID of the user who owns the session. |
-| `created_at` | String (ISO 8601) | Optional | Date and time when the session was created. |
-| `last_activity` | String (ISO 8601) | Optional | Date and time of the last activity in the session. |
-| `metadata` | Table | Optional | Additional metadata of the session. See [3.2.1. Session Metadata](#321-session-metadata-metadata-table) for details. |
+| Field Name      | Type              | Required/Optional | Description                                                                                                          |
+| :-------------- | :---------------- | :---------------- | :------------------------------------------------------------------------------------------------------------------- |
+| `id`            | String (UUIDv4)   | Optional          | Unique identifier of the session.                                                                                    |
+| `title`         | String            | **Required**      | Title of the chat session.                                                                                           |
+| `user_id`       | String (UUIDv4)   | Optional          | ID of the user who owns the session.                                                                                 |
+| `created_at`    | String (ISO 8601) | Optional          | Date and time when the session was created.                                                                          |
+| `last_activity` | String (ISO 8601) | Optional          | Date and time of the last activity in the session.                                                                   |
+| `metadata`      | Table             | Optional          | Additional metadata of the session. See [3.2.1. Session Metadata](#321-session-metadata-metadata-table) for details. |
 
 #### 3.2.1. Session Metadata (`metadata` Table)
 
-| Field Name | Type | Required/Optional | Description |
-| :--- | :--- | :--- | :--- |
-| `message_count` | Integer | **Required** | Total number of messages in the session. |
-| `models_used` | Array (Strings) | Optional | List of model names used in this session. |
+| Field Name      | Type            | Required/Optional | Description                               |
+| :-------------- | :-------------- | :---------------- | :---------------------------------------- |
+| `message_count` | Integer         | **Required**      | Total number of messages in the session.  |
+| `models_used`   | Array (Strings) | Optional          | List of model names used in this session. |
 
 ### 3.3. `[[messages]]` (Array of Messages)
 
 A list of messages that make up the conversation. Since this is an array of tables, each message is sequentially added as a `[[messages]]` section.
 
-| Field Name | Type | Required/Optional | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | String (UUIDv4) | Optional | Unique identifier of the message. |
-| `role` | String | **Required** | The role of the sender. One of `"user"`, `"assistant"`, or `"system"`. |
-| `content` | String | Deprecated, import-only (v2.0) | Body of the message. Only appears in v2.0 files being imported; never written by the v5.0 exporter. |
-| `parts` | Array (Objects) | **Required** (v4.0+) | Multimodal content parts and sole source of truth for message body content. For details, see "4. Message Part Specification". |
-| `session_id` | String (UUIDv4) | Optional | ID of the chat session to which the message belongs. |
-| `user_id` | String (UUIDv4) | Optional | ID of the user who created the message. |
-| `parent_chat_message_id` | String (UUIDv4) | Optional | ID of the parent message (used for representing thread structures or conversation branches). |
-| `continuation_source_message_id` | String (UUIDv4) | Optional | ID of the message that was continued to generate this message. Named `continuation_source_id` before v5.0. |
-| `edited_source_message_id` | String (UUIDv4) | Optional | ID of the original message that was edited to generate this message. Named `edited_source_id` before v5.0. |
-| `created_at` | String (ISO 8601) | Optional | Date and time when the message was created. |
-| `generation_request` | Table | Optional | Snapshot of what was generated and with which settings. See [4.8. `generation_request` Field Specification](#48-generation_request-field-specification) for details. |
-| `generation_result` | Table | Optional | Summary of the generation result. See [4.9. `generation_result` Field Specification](#49-generation_result-field-specification) for details. |
-| `generation_telemetry` | Table | Optional | Observed values of the generation process and origins. See [4.10. `generation_telemetry` Field Specification](#410-generation_telemetry-field-specification) for details. |
+| Field Name                       | Type              | Required/Optional              | Description                                                                                                                                                               |
+| :------------------------------- | :---------------- | :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                             | String (UUIDv4)   | Optional                       | Unique identifier of the message.                                                                                                                                         |
+| `role`                           | String            | **Required**                   | The role of the sender. One of `"user"`, `"assistant"`, or `"system"`.                                                                                                    |
+| `content`                        | String            | Deprecated, import-only (v2.0) | Body of the message. Only appears in v2.0 files being imported; never written by the v5.0 exporter.                                                                       |
+| `parts`                          | Array (Objects)   | **Required** (v4.0+)           | Multimodal content parts and sole source of truth for message body content. For details, see "4. Message Part Specification".                                             |
+| `session_id`                     | String (UUIDv4)   | Optional                       | ID of the chat session to which the message belongs.                                                                                                                      |
+| `user_id`                        | String (UUIDv4)   | Optional                       | ID of the user who created the message.                                                                                                                                   |
+| `parent_chat_message_id`         | String (UUIDv4)   | Optional                       | ID of the parent message (used for representing thread structures or conversation branches).                                                                              |
+| `continuation_source_message_id` | String (UUIDv4)   | Optional                       | ID of the message that was continued to generate this message. Named `continuation_source_id` before v5.0.                                                                |
+| `edited_source_message_id`       | String (UUIDv4)   | Optional                       | ID of the original message that was edited to generate this message. Named `edited_source_id` before v5.0.                                                                |
+| `created_at`                     | String (ISO 8601) | Optional                       | Date and time when the message was created.                                                                                                                               |
+| `generation_request`             | Table             | Optional                       | Snapshot of what was generated and with which settings. See [4.8. `generation_request` Field Specification](#48-generation_request-field-specification) for details.      |
+| `generation_result`              | Table             | Optional                       | Summary of the generation result. See [4.9. `generation_result` Field Specification](#49-generation_result-field-specification) for details.                              |
+| `generation_telemetry`           | Table             | Optional                       | Observed values of the generation process and origins. See [4.10. `generation_telemetry` Field Specification](#410-generation_telemetry-field-specification) for details. |
 
 ### 3.4. `[workflow_execution_history]` (Workflow History)
 
 Backend workflow execution logs that ran in association with the chat execution.
 
-| Field Name | Type | Required/Optional | Description |
-| :--- | :--- | :--- | :--- |
-| `entries` | Array (Objects) | **Required** | List of executed workflow logs (can be an empty array `[]`). |
-| `next_cursor` | String | Optional | Cursor for retrieving additional history (pagination). |
+| Field Name    | Type            | Required/Optional | Description                                                  |
+| :------------ | :-------------- | :---------------- | :----------------------------------------------------------- |
+| `entries`     | Array (Objects) | **Required**      | List of executed workflow logs (can be an empty array `[]`). |
+| `next_cursor` | String          | Optional          | Cursor for retrieving additional history (pagination).       |
 
 ---
 
@@ -104,117 +103,117 @@ In `messages` of v3.0 and later, the `parts` array is used to express multimodal
 
 The most basic text message part.
 
-* **`type`**: `"text"` (Fixed)
-* **`text`** (String, **Required**): The text body.
-* **`id`** (String (UUIDv4), Optional): Unique ID of the part.
+- **`type`**: `"text"` (Fixed)
+- **`text`** (String, **Required**): The text body.
+- **`id`** (String (UUIDv4), Optional): Unique ID of the part.
 
 ### 4.2. `image` Part (Image Data)
 
 A part representing an image when it is input or output.
 
-* **`type`**: `"image"` (Fixed)
-* **`media_type`** (String, **Required**): MIME type of the image (e.g., `"image/png"`, `"image/jpeg"`, `"image/webp"`).
-* **`id`** (String (UUIDv4), Optional): Unique ID of the part.
-* **`urls`** (Table, Optional): Map of URLs according to conditions such as resolution.
-* **`default_url`** (String, Optional): Default image URL (Data URI format or signed URL).
-* **`variants`** (Table, Optional): Paths to various image variants (such as thumbnails).
-* **`expires_at`** (Integer, Optional): Unix timestamp indicating the expiration time of the URL.
+- **`type`**: `"image"` (Fixed)
+- **`media_type`** (String, **Required**): MIME type of the image (e.g., `"image/png"`, `"image/jpeg"`, `"image/webp"`).
+- **`id`** (String (UUIDv4), Optional): Unique ID of the part.
+- **`urls`** (Table, Optional): Map of URLs according to conditions such as resolution.
+- **`default_url`** (String, Optional): Default image URL (Data URI format or signed URL).
+- **`variants`** (Table, Optional): Paths to various image variants (such as thumbnails).
+- **`expires_at`** (Integer, Optional): Unix timestamp indicating the expiration time of the URL.
 
 ### 4.3. `input_audio` Part (Input Audio)
 
 Audio data input by the user.
 
-* **`type`**: `"input_audio"` (Fixed)
-* **`key`** (String, **Required**): Object key in the storage that identifies the audio data.
-* **`media_type`** (String, **Required**): MIME type of the audio.
-* **`format`** (String, **Required**): Container/compression format name of the audio.
-* **`id`** (String (UUIDv4), Optional): Unique ID of the part.
+- **`type`**: `"input_audio"` (Fixed)
+- **`key`** (String, **Required**): Object key in the storage that identifies the audio data.
+- **`media_type`** (String, **Required**): MIME type of the audio.
+- **`format`** (String, **Required**): Container/compression format name of the audio.
+- **`id`** (String (UUIDv4), Optional): Unique ID of the part.
 
 ### 4.4. `output_audio` Part (Output Audio)
 
 Audio data returned by the AI.
 
-* **`type`**: `"output_audio"` (Fixed)
-* **`key`** (String, **Required**): Object key in the storage that identifies the audio data.
-* **`media_type`** (String, **Required**): MIME type of the audio.
-* **`transcript`** (String, Optional): Transcription text of the audio.
-* **`id`** (String (UUIDv4), Optional): Unique ID of the part.
+- **`type`**: `"output_audio"` (Fixed)
+- **`key`** (String, **Required**): Object key in the storage that identifies the audio data.
+- **`media_type`** (String, **Required**): MIME type of the audio.
+- **`transcript`** (String, Optional): Transcription text of the audio.
+- **`id`** (String (UUIDv4), Optional): Unique ID of the part.
 
 ### 4.5. `document` Part (Document such as PDF)
 
 Various documents sent for reference or attachment purposes.
 
-* **`type`**: `"document"` (Fixed)
-* **`key`** (String, **Required**): Object key in the storage that identifies the document data.
-* **`media_type`** (String, **Required**): MIME type of the document (e.g., `"application/pdf"`).
-* **`title`** (String, Optional): Display name or title of the document.
-* **`id`** (String (UUIDv4), Optional): Unique ID of the part.
+- **`type`**: `"document"` (Fixed)
+- **`key`** (String, **Required**): Object key in the storage that identifies the document data.
+- **`media_type`** (String, **Required**): MIME type of the document (e.g., `"application/pdf"`).
+- **`title`** (String, Optional): Display name or title of the document.
+- **`id`** (String (UUIDv4), Optional): Unique ID of the part.
 
 ### 4.6. `reasoning` Part (Thinking Process)
 
 The thoughts (reasoning process) that the AI model went through while generating the response.
 
-* **`type`**: `"reasoning"` (Fixed)
-* **`thinking`** (String, **Required**): Text representing the model's reasoning/thinking process.
-* **`id`** (String (UUIDv4), Optional): Unique ID of the part.
+- **`type`**: `"reasoning"` (Fixed)
+- **`thinking`** (String, **Required**): Text representing the model's reasoning/thinking process.
+- **`id`** (String (UUIDv4), Optional): Unique ID of the part.
 
 ### 4.7. `unknown` Part (Unknown Part)
 
 A fallback for parts defined only in newer versions or by specific providers that the system cannot interpret directly.
 
-* **`type`** (String, **Required**): Any part identifier name.
-* **`id`** (String (UUIDv4), **Required**): Unique ID of the part.
+- **`type`** (String, **Required**): Any part identifier name.
+- **`id`** (String (UUIDv4), **Required**): Unique ID of the part.
 
 ### 4.8. `generation_request` Field Specification
 
 Represents the settings and parameters used for LLM generation.
 
-* **`model`** (String, Optional): The identifier of the model used (e.g., `"gpt-4o"`, `"gemini-1.5-pro"`).
-* **`chat_params`** (Table, Optional): OpenAI-compatible generation parameters.
-    * **`temperature`** (Float, Optional): Sampling temperature (0.0 to 2.0).
-    * **`max_tokens`** (Integer, Optional): Maximum tokens to generate.
-    * **`max_completion_tokens`** (Integer, Optional): Maximum completion tokens to generate.
-    * **`top_p`** (Float, Optional): Nucleus sampling probability.
-    * **`presence_penalty`** (Float, Optional): Presence penalty (-2.0 to 2.0).
-    * **`frequency_penalty`** (Float, Optional): Frequency penalty (-2.0 to 2.0).
-    * **`stop`** (String or Array of Strings, Optional): Stop sequences.
-    * **`verbosity`** (String, Optional): Verbosity level (`"low"`, `"medium"`, `"high"`).
-    * (Other OpenAI-compatible parameters are allowed as keys).
-* **`chat_prompt_config`** (Table, Optional): Prompt settings.
-* **`prompt_length`** (Integer, Optional): Length of the prompt tokens.
-* **`prefix_length`** (Integer, Optional): Length of the prefix tokens.
+- **`model`** (String, Optional): The identifier of the model used (e.g., `"gpt-4o"`, `"gemini-1.5-pro"`).
+- **`chat_params`** (Table, Optional): OpenAI-compatible generation parameters.
+    - **`temperature`** (Float, Optional): Sampling temperature (0.0 to 2.0).
+        - **`max_tokens`** (Integer, Optional): Maximum tokens to generate.
+        - **`max_completion_tokens`** (Integer, Optional): Maximum completion tokens to generate.
+        - **`top_p`** (Float, Optional): Nucleus sampling probability.
+        - **`presence_penalty`** (Float, Optional): Presence penalty (-2.0 to 2.0).
+        - **`frequency_penalty`** (Float, Optional): Frequency penalty (-2.0 to 2.0).
+        - **`stop`** (String or Array of Strings, Optional): Stop sequences.
+        - **`verbosity`** (String, Optional): Verbosity level (`"low"`, `"medium"`, `"high"`).
+        - (Other OpenAI-compatible parameters are allowed as keys).
+- **`chat_prompt_config`** (Table, Optional): Prompt settings.
+- **`prompt_length`** (Integer, Optional): Length of the prompt tokens.
+- **`prefix_length`** (Integer, Optional): Length of the prefix tokens.
 
 ### 4.9. `generation_result` Field Specification
 
 Summary of the generation result.
 
-* **`finish_reason`** (String, Optional): The reason why generation finished (e.g., `"stop"`, `"length"`, `"content_filter"`).
-* **`token_usage`** (Table, Optional): Token consumption summary.
-    * **`prompt_tokens`** (Integer, Optional): Number of tokens in the prompt.
-    * **`completion_tokens`** (Integer, Optional): Number of tokens in the completion.
-    * **`total_tokens`** (Integer, Optional): Total tokens used (`prompt_tokens` + `completion_tokens`).
+- **`finish_reason`** (String, Optional): The reason why generation finished (e.g., `"stop"`, `"length"`, `"content_filter"`).
+- **`token_usage`** (Table, Optional): Token consumption summary.
+    - **`prompt_tokens`** (Integer, Optional): Number of tokens in the prompt.
+        - **`completion_tokens`** (Integer, Optional): Number of tokens in the completion.
+        - **`total_tokens`** (Integer, Optional): Total tokens used (`prompt_tokens` + `completion_tokens`).
 
 ### 4.10. `generation_telemetry` Field Specification
 
 Observed telemetry data of the generation process, including retrieval origins.
 
-* **`started_at`** (String (ISO 8601), Optional): Timestamp when generation started.
-* **`completed_at`** (String (ISO 8601), Optional): Timestamp when generation completed.
-* **`time_to_first_token_ms`** (Integer, Optional): Time to first token in milliseconds.
-* **`part_telemetry`** (Table, Optional): Table mapping ContentPart IDs to part-specific telemetry.
-    * Keys are part IDs (String, UUIDv4), and values are tables containing:
-        * **`source`** (String, Optional): Origin/source of the part content (e.g., `"model_generation"`, `"web_search"`, `"cache"`).
-        * **`generated_started_at`** (String (ISO 8601), Optional): Generation start time for this part.
-        * **`generated_completed_at`** (String (ISO 8601), Optional): Generation completion time for this part.
-        * **`metadata`** (Table, Optional): Extra metadata associated with the part's retrieval or generation.
-* **`transition_telemetry`** (Array of Tables, Optional): Telemetry of stream transitions (e.g., transition from reasoning to answer).
-    * Each element is a table containing:
-        * **`from_part_id`** (String (UUIDv4), Optional)
-        * **`to_part_id`** (String (UUIDv4), Optional)
-        * **`kind`** (String, Required): The transition kind (e.g., `"reasoning_to_answer"`).
-        * **`at`** (String (ISO 8601), Optional)
-        * **`duration_ms`** (Integer, Optional)
-        * **`metadata`** (Table, Optional)
+- **`started_at`** (String (ISO 8601), Optional): Timestamp when generation started.
+- **`completed_at`** (String (ISO 8601), Optional): Timestamp when generation completed.
+- **`time_to_first_token_ms`** (Integer, Optional): Time to first token in milliseconds.
+- **`part_telemetry`** (Table, Optional): Table mapping ContentPart IDs to part-specific telemetry.
+    - Keys are part IDs (String, UUIDv4), and values are tables containing:
+        - **`source`** (String, Optional): Origin/source of the part content (e.g., `"model_generation"`, `"web_search"`, `"cache"`).
+        - **`generated_started_at`** (String (ISO 8601), Optional): Generation start time for this part.
+        - **`generated_completed_at`** (String (ISO 8601), Optional): Generation completion time for this part.
+        - **`metadata`** (Table, Optional): Extra metadata associated with the part's retrieval or generation.
+- **`transition_telemetry`** (Array of Tables, Optional): Telemetry of stream transitions (e.g., transition from reasoning to answer).
+    - Each element is a table containing:
+        - **`from_part_id`** (String (UUIDv4), Optional)
+        - **`to_part_id`** (String (UUIDv4), Optional)
+        - **`kind`** (String, Required): The transition kind (e.g., `"reasoning_to_answer"`).
+        - **`at`** (String (ISO 8601), Optional)
+        - **`duration_ms`** (Integer, Optional)
+        - **`metadata`** (Table, Optional)
 
 ---
 
@@ -224,14 +223,14 @@ Observed telemetry data of the generation process, including retrieval origins.
 
 There are structural differences in how the message body is represented, plus one field-naming change in v5.0.
 
-* **v2.0**: A simple structure that stores message text in a single string field `content`.
-* **v3.0**: To support mixed content such as images and audio in addition to text-only dialogues, `text_content` (a
+- **v2.0**: A simple structure that stores message text in a single string field `content`.
+- **v3.0**: To support mixed content such as images and audio in addition to text-only dialogues, `text_content` (a
   search-index string derived from `parts`) and the `parts` array were both present.
-* **v4.0**: `text_content` is removed entirely. `parts` is the sole source of truth for message body content. This
+- **v4.0**: `text_content` is removed entirely. `parts` is the sole source of truth for message body content. This
   is a deliberate simplification, not a feature loss: `text_content` was never independent information — it was
   always computed from `parts` — and carrying it in the export format allowed stale or attachment-polluted text to
   be written and re-imported as if it were authoritative.
-* **v5.0**: `continuation_source_id` and `edited_source_id` on `[[messages]]` are renamed to
+- **v5.0**: `continuation_source_id` and `edited_source_id` on `[[messages]]` are renamed to
   `continuation_source_message_id` and `edited_source_message_id`. No structural change — same values, same
   semantics, field name only.
 
