@@ -20,7 +20,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.6.2",
 		"markdownlint-cli2": "^0.24.0",
-		"npm-run-all2": "^9.0.3",
+		"npm-run-all2": "^9.0.4",
 		"smol-toml": "^1.9.1"
 	},
 	"engines": {
