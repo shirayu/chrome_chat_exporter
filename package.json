@@ -19,8 +19,8 @@
 	"version": "1.0.0",
 	"devDependencies": {
 		"@biomejs/biome": "2.6.8",
-		"markdownlint-cli2": "^0.24.1",
-		"npm-run-all2": "^9.0.4",
+		"markdownlint-cli2": "^0.24.2",
+		"npm-run-all2": "^9.1.0",
 		"smol-toml": "^1.9.1"
 	},
 	"engines": {
